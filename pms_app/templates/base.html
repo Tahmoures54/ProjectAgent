@@ -42,6 +42,7 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
 
   <!-- Jalali Datepicker -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@majidh1/jalalidatepicker@0.9.12/dist/jalalidatepicker.min.css">
@@ -80,8 +81,8 @@
                  x-transition:enter-end="opacity-100 translate-y-0"
                  class="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-2" style="display: none;">
               <div class="px-3 py-2 text-xs text-slate-400 font-bold uppercase">مدیریت حساب</div>
-              <a href="#" class="dropdown-item-modern">
-                <i class="fa-solid fa-circle-user opacity-50 w-5"></i> پروفایل من
+              <a href="{{ url_for('auth.change_password') }}" class="dropdown-item-modern">
+                <i class="fa-solid fa-circle-user opacity-50 w-5"></i> پروفایل و رمز عبور
               </a>
               {% if is_admin %}
                 <a href="{{ url_for('main.settings') }}" class="dropdown-item-modern">
@@ -122,10 +123,10 @@
           {% endif %}
         </div>
 
-        <div class="hidden md:flex relative shrink-0">
+        <form method="get" action="{{ url_for('main.search') }}" class="hidden md:flex relative shrink-0">
           <i class="fa-solid fa-magnifying-glass absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
-          <input type="text" placeholder="جستجوی هوشمند..." class="search-input">
-        </div>
+          <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="جستجوی هوشمند..." class="search-input" aria-label="جستجو">
+        </form>
 
         <button @click="$store.theme.toggle()" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-500 dark:text-slate-400 shrink-0" aria-label="تغییر تم">
           <i class="fa-solid fa-moon dark:hidden"></i>
@@ -176,6 +177,30 @@
   </footer>
 
   <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-4">
+    <div id="inbox-panel" class="chat-window hidden flex-col w-[90vw] max-w-sm max-h-[420px] bg-white dark:bg-slate-800 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-700 animate-fade-in-up origin-bottom">
+      <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+        <span class="font-bold text-sm text-slate-800 dark:text-white">اعلان‌های عملیاتی</span>
+        <button onclick="toggleInbox()" class="text-slate-400 hover:text-slate-600 bg-transparent border-0 p-1" aria-label="بستن">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        {% if nav_inbox and nav_inbox.entries %}
+          {% for item in nav_inbox.entries %}
+          <a href="{{ item.url }}" class="block px-4 py-3 border-b border-slate-50 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/40 no-underline">
+            <div class="text-sm font-bold text-slate-800 dark:text-white">{{ item.title }}</div>
+            <div class="text-xs text-slate-500 mt-0.5">{{ item.meta }}</div>
+          </a>
+          {% endfor %}
+        {% else %}
+          <p class="p-6 text-sm text-slate-400 text-center">اعلان جدیدی نیست.</p>
+        {% endif %}
+      </div>
+      <div class="p-3 text-center border-t border-slate-100 dark:border-slate-700">
+        <a href="{{ url_for('main.dashboard') }}" class="text-xs font-bold text-brand-600 no-underline">مشاهده داشبورد</a>
+      </div>
+    </div>
+
     <div id="chat-window" class="chat-window hidden flex-col w-[90vw] max-w-sm h-[500px] bg-white dark:bg-slate-800 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-700 animate-fade-in-up origin-bottom">
       <div class="bg-gradient-to-l from-brand-600 to-indigo-500 p-4 text-white flex justify-between items-center shadow-md">
         <span class="font-bold flex items-center gap-2 text-sm">
@@ -203,8 +228,11 @@
     </div>
 
     <div class="dock-container flex items-center gap-1 sm:gap-2 p-2 rounded-full">
-      <button class="dock-btn p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-brand-600 transition" data-tooltip="نوتیفیکیشن‌ها" aria-label="نوتیفیکیشن‌ها">
+      <button class="dock-btn relative p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-brand-600 transition" data-tooltip="نوتیفیکیشن‌ها" aria-label="نوتیفیکیشن‌ها" onclick="toggleInbox()">
         <i class="fa-solid fa-bell text-lg"></i>
+        {% if nav_inbox and nav_inbox.count %}
+        <span class="absolute top-1 left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">{{ nav_inbox.count if nav_inbox.count < 10 else '۹+' }}</span>
+        {% endif %}
       </button>
       <button class="dock-btn p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-brand-600 transition hidden sm:flex" data-tooltip="پروژه‌ها" aria-label="پروژه‌ها" onclick="window.location.href='{{ url_for('projects.projects') }}'">
         <i class="fa-solid fa-folder-open text-lg"></i>

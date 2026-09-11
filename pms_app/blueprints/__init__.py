@@ -31,9 +31,9 @@ def get_blueprints() -> List[Blueprint]:
     from pms_app.blueprints.projects import bp as projects_bp
     from pms_app.blueprints.reports import bp as reports_bp
     from pms_app.blueprints.users import bp as users_bp
-
-    # Blueprint جدید برای پلن/پرداخت
     from pms_app.blueprints.billing import bp as billing_bp
+    from pms_app.blueprints.daily_reports import bp as daily_reports_bp
+    from pms_app.blueprints.concerns import bp as concerns_bp
 
     return [
         main_bp,
@@ -44,6 +44,8 @@ def get_blueprints() -> List[Blueprint]:
         items_bp,
         reports_bp,
         billing_bp,
+        daily_reports_bp,
+        concerns_bp,
     ]
 
 

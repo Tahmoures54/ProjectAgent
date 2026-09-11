@@ -4,9 +4,9 @@ from __future__ import annotations
 from pms_app.models import Role, User, Company, Project
 
 
-def _create_user(session, email_prefix, password, role_name=None):
+def _create_user(session, email_prefix, password, role_name=None, company_id=None):
     email = f"{email_prefix}@example.com"
-    user = User(email=email, full_name=email_prefix, is_active=True)
+    user = User(email=email, full_name=email_prefix, is_active=True, company_id=company_id)
     user.set_password(password)
 
     if role_name:
@@ -25,7 +25,10 @@ def test_projects_list_requires_login(client):
 
 
 def test_viewer_can_see_projects_list_but_cannot_create(client, db_session):
-    _create_user(db_session, "viewer1", "pass1234", role_name="viewer")
+    company = Company(name="Viewer Co")
+    db_session.add(company)
+    db_session.commit()
+    _create_user(db_session, "viewer1", "pass1234", role_name="viewer", company_id=company.id)
 
     client.post("/login", data={
         "email": "viewer1@example.com",
@@ -45,15 +48,14 @@ def test_viewer_can_see_projects_list_but_cannot_create(client, db_session):
 
 
 def test_admin_can_create_project(client, db_session):
-    _create_user(db_session, "admin1", "pass1234", role_name="admin")
+    company = Company(name="Admin Co")
+    db_session.add(company)
+    db_session.commit()
+    _create_user(db_session, "admin1", "pass1234", role_name="company_admin", company_id=company.id)
     client.post("/login", data={
         "email": "admin1@example.com",
         "password": "pass1234",
     })
-
-    company = Company(name="Admin Co")
-    db_session.add(company)
-    db_session.commit()
 
     response = client.post("/projects/new", data={
         "company_id": company.id,
@@ -69,15 +71,14 @@ def test_admin_can_create_project(client, db_session):
 
 
 def test_admin_can_edit_project(client, db_session):
-    _create_user(db_session, "admin2", "pass1234", role_name="admin")
+    company = Company(name="Edit Co")
+    db_session.add(company)
+    db_session.flush()
+    _create_user(db_session, "admin2", "pass1234", role_name="company_admin", company_id=company.id)
     client.post("/login", data={
         "email": "admin2@example.com",
         "password": "pass1234",
     })
-
-    company = Company(name="Edit Co")
-    db_session.add(company)
-    db_session.flush()
 
     project = Project(
         company_id=company.id,
@@ -102,15 +103,14 @@ def test_admin_can_edit_project(client, db_session):
 
 
 def test_admin_can_delete_project(client, db_session):
-    _create_user(db_session, "admin3", "pass1234", role_name="admin")
+    company = Company(name="Delete Co")
+    db_session.add(company)
+    db_session.flush()
+    _create_user(db_session, "admin3", "pass1234", role_name="company_admin", company_id=company.id)
     client.post("/login", data={
         "email": "admin3@example.com",
         "password": "pass1234",
     })
-
-    company = Company(name="Delete Co")
-    db_session.add(company)
-    db_session.flush()
 
     project = Project(
         company_id=company.id,

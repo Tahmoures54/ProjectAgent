@@ -66,6 +66,8 @@ def create_app(config_name: str | None = None, env: str | None = None) -> Flask:
     _register_blueprints(app)
     _register_security_headers(app)
     _register_health_check(app)
+    _register_error_handlers(app)
+    _register_context_processors(app)
     _ensure_debug_routes(app)
     _ensure_root_route(app)
     _warn_insecure_secret(app, cfg=cfg)
@@ -148,16 +150,41 @@ def _register_health_check(app: Flask) -> None:
             from pms_app.extensions import db
             from sqlalchemy import text
 
-            with app.app_context():
-                db.session.execute(text("SELECT 1"))
+            db.session.execute(text("SELECT 1"))
             status["database"] = "ok"
             code = 200
         except Exception as exc:
             status["status"] = "degraded"
             status["database"] = "error"
-            status["detail"] = str(exc)[:200]
+            if app.debug or app.config.get("TESTING"):
+                status["detail"] = str(exc)[:200]
             code = 503
         return jsonify(status), code
+
+
+def _register_error_handlers(app: Flask) -> None:
+    try:
+        from pms_app.middleware.error_handler import ErrorHandler
+
+        ErrorHandler(app)
+    except Exception:
+        app.logger.exception("Failed to register error handlers")
+
+
+def _register_context_processors(app: Flask) -> None:
+    @app.context_processor
+    def inject_nav_inbox():
+        empty = {"count": 0, "entries": []}
+        try:
+            from flask_login import current_user
+
+            if not getattr(current_user, "is_authenticated", False):
+                return {"nav_inbox": empty}
+            from pms_app.utils.inbox import user_inbox
+
+            return {"nav_inbox": user_inbox(current_user, limit=6)}
+        except Exception:
+            return {"nav_inbox": empty}
 
 
 def _ensure_db_schema_and_seed(app: Flask, *, cfg: str) -> None:

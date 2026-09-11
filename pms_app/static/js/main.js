@@ -1,7 +1,7 @@
 // Alpine.js Store for Dark Mode
 document.addEventListener('alpine:init', () => {
   Alpine.store('theme', {
-    dark: localStorage.getItem('theme') === 'dark' || 
+    dark: localStorage.getItem('theme') === 'dark' ||
           (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches),
     toggle() {
       this.dark = !this.dark;
@@ -19,60 +19,106 @@ document.addEventListener('alpine:init', () => {
       }
     }
   });
-  
-  // Initialize immediately on load
+
   Alpine.store('theme').init();
 });
 
-// AI Chat Toggle Logic
-function toggleChat() {
-  const chat = document.getElementById('chat-window');
-  const isHidden = chat.classList.contains('hidden');
-  
+function _csrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? meta.getAttribute('content') : '';
+}
+
+function togglePanel(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isHidden = el.classList.contains('hidden');
   if (isHidden) {
-    chat.classList.remove('hidden');
-    chat.classList.add('flex');
-    const messages = document.getElementById('chat-messages');
-    messages.scrollTop = messages.scrollHeight;
+    el.classList.remove('hidden');
+    el.classList.add('flex');
   } else {
-    chat.classList.add('hidden');
-    chat.classList.remove('flex');
+    el.classList.add('hidden');
+    el.classList.remove('flex');
   }
 }
 
-// AI Chat Send Logic
+function toggleChat() {
+  const inbox = document.getElementById('inbox-panel');
+  if (inbox && !inbox.classList.contains('hidden')) {
+    inbox.classList.add('hidden');
+    inbox.classList.remove('flex');
+  }
+  togglePanel('chat-window');
+  const messages = document.getElementById('chat-messages');
+  if (messages) messages.scrollTop = messages.scrollHeight;
+}
+
+function toggleInbox() {
+  const chat = document.getElementById('chat-window');
+  if (chat && !chat.classList.contains('hidden')) {
+    chat.classList.add('hidden');
+    chat.classList.remove('flex');
+  }
+  togglePanel('inbox-panel');
+}
+
+function appendChat(html, className, asText) {
+  const messagesContainer = document.getElementById('chat-messages');
+  if (!messagesContainer) return null;
+  const el = document.createElement('div');
+  el.className = className;
+  if (asText) el.innerText = html;
+  else el.innerHTML = html;
+  messagesContainer.appendChild(el);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  return el;
+}
+
 function sendToAI() {
   const input = document.getElementById('ai-input');
   const messagesContainer = document.getElementById('chat-messages');
+  if (!input || !messagesContainer) return;
   const userVal = input.value.trim();
-  
   if (!userVal) return;
 
-  // User Message
-  const userMsg = document.createElement('div');
-  userMsg.className = 'bg-brand-600 text-white p-3 rounded-2xl rounded-tl-sm max-w-[85%] self-end shadow-sm';
-  userMsg.innerText = userVal;
-  messagesContainer.appendChild(userMsg);
-
+  appendChat(userVal, 'bg-brand-600 text-white p-3 rounded-2xl rounded-tl-sm max-w-[85%] self-end shadow-sm', true);
   input.value = '';
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-  // Simulated Bot "Typing..."
-  setTimeout(() => {
-    const typingMsg = document.createElement('div');
-    typingMsg.className = 'bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-tr-sm border border-slate-100 dark:border-slate-700 shadow-sm text-slate-500 dark:text-slate-400 max-w-[85%] self-start animate-pulse';
-    typingMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> در حال پردازش...';
-    messagesContainer.appendChild(typingMsg);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  const typingMsg = appendChat(
+    '<i class="fa-solid fa-circle-notch fa-spin"></i> در حال پردازش...',
+    'bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-tr-sm border border-slate-100 dark:border-slate-700 shadow-sm text-slate-500 dark:text-slate-400 max-w-[85%] self-start',
+    false
+  );
 
-    // Remove typing and add response
-    setTimeout(() => {
-      typingMsg.remove();
-      const botMsg = document.createElement('div');
-      botMsg.className = 'bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-tr-sm border border-slate-100 dark:border-slate-700 shadow-sm text-slate-700 dark:text-slate-200 max-w-[85%] self-start';
-      botMsg.innerText = 'این یک پاسخ آزمایشی از سمت سیستم است. برای اتصال به هوش مصنوعی واقعی، توکن API خود را در سرویس مربوطه قرار دهید.';
-      messagesContainer.appendChild(botMsg);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }, 1500);
-  }, 500);
+  fetch('/assistant/ask', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': _csrfToken(),
+    },
+    body: JSON.stringify({ q: userVal }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (typingMsg) typingMsg.remove();
+      const answer = (data && data.answer) ? data.answer : 'پاسخی دریافت نشد.';
+      let html = answer.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      if (data && data.url && data.cta) {
+        const href = String(data.url).replace(/"/g, '');
+        const cta = String(data.cta).replace(/</g, '&lt;');
+        html += `<br><a href="${href}" class="inline-block mt-2 text-xs font-bold text-brand-600">${cta}</a>`;
+      }
+      appendChat(
+        html,
+        'bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-tr-sm border border-slate-100 dark:border-slate-700 shadow-sm text-slate-700 dark:text-slate-200 max-w-[85%] self-start',
+        false
+      );
+    })
+    .catch(() => {
+      if (typingMsg) typingMsg.remove();
+      appendChat(
+        'ارتباط با دستیار برقرار نشد. بعداً دوباره تلاش کنید.',
+        'bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-tr-sm border border-slate-100 dark:border-slate-700 shadow-sm text-slate-700 dark:text-slate-200 max-w-[85%] self-start',
+        true
+      );
+    });
 }

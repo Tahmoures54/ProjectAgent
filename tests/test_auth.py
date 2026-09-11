@@ -35,16 +35,23 @@ def test_dashboard_requires_login(client):
     assert response.status_code in (302, 401)
 
 
-def test_register_creates_user_and_redirects_to_login(client):
-    # مسیر ثبت‌نام را مطابق blueprint واقعی تنظیم کنید؛ معمولاً /register است
+def test_register_creates_user_and_redirects_to_login(client, db_session):
+    client.get("/register")
+    with client.session_transaction() as sess:
+        captcha = sess.get("captcha_correct")
     response = client.post("/register", data={
         "email": "newuser@example.com",
         "password": "securepass123",
-        "confirm_password": "securepass123",
+        "password2": "securepass123",
         "full_name": "New User",
+        "company_name": "شرکت تست",
+        "accept_terms": "on",
+        "captcha_answer": str(captcha),
     }, follow_redirects=False)
 
     assert response.status_code in (301, 302)
+    assert "/login" in response.headers.get("Location", "")
+    assert User.query.filter_by(email="newuser@example.com").first() is not None
 
 
 def test_login_success_redirects_to_dashboard(client, db_session):

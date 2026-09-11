@@ -124,7 +124,6 @@ class Concern(db.Model):
     __table_args__ = (
         db.Index("ix_concerns_company_status", "company_id", "status"),
         db.Index("ix_concerns_project_status", "project_id", "status"),
-        db.Index("ix_concerns_visibility", "visibility"),
         db.Index("ix_concerns_assignee_status", "assignee_id", "status"),
     )
 

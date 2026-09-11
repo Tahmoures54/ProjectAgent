@@ -1,5 +1,7 @@
 # Environment
 .env
+.env.local
+.env.production
 .env.*
 !.env.example
 .venv/

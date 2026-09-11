@@ -1,0 +1,56 @@
+{# Path: pms_app/templates/main/search.html #}
+{% extends "base.html" %}
+{% block title %}جستجو | iProject{% endblock %}
+
+{% block content %}
+<main class="max-w-4xl mx-auto space-y-8 px-4 py-8">
+  <header>
+    <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">جستجوی هوشمند</h1>
+    <p class="text-sm text-gray-500 mt-1">پروژه‌ها، گزارش روزانه و کانسرن‌ها</p>
+  </header>
+
+  <form method="get" action="{{ url_for('main.search') }}" class="relative">
+    <i class="fa-solid fa-magnifying-glass absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+    <input type="search" name="q" value="{{ q or '' }}" autofocus
+           placeholder="نام پروژه، کد، عنوان کانسرن، شرح گزارش..."
+           class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-3.5 pr-12 pl-4 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+  </form>
+
+  {% if q and q|length < 2 %}
+    <p class="text-sm text-amber-600">حداقل دو نویسه وارد کنید.</p>
+  {% elif q %}
+    {% set total = (results.projects|length) + (results.daily_reports|length) + (results.concerns|length) %}
+    <p class="text-xs text-gray-500">{{ total }} نتیجه برای «{{ q }}»</p>
+
+    {% macro result_list(title, icon, items, empty) %}
+      <section class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <h2 class="px-5 py-3 text-sm font-bold border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
+          <i class="fas {{ icon }} text-indigo-500"></i> {{ title }}
+        </h2>
+        {% if items %}
+          <ul class="divide-y divide-gray-100 dark:divide-gray-700">
+            {% for item in items %}
+            <li>
+              <a href="{{ item.url }}" class="block px-5 py-3 hover:bg-indigo-50/40 dark:hover:bg-indigo-900/20 no-underline">
+                <div class="text-sm font-bold text-gray-800 dark:text-white">{{ item.title }}</div>
+                <div class="text-xs text-gray-500 mt-0.5">{{ item.meta }}</div>
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="px-5 py-6 text-sm text-gray-400">{{ empty }}</p>
+        {% endif %}
+      </section>
+    {% endmacro %}
+
+    <div class="space-y-5">
+      {{ result_list('پروژه‌ها', 'fa-folder-open', results.projects, 'پروژه‌ای پیدا نشد.') }}
+      {{ result_list('گزارش روزانه', 'fa-clipboard-list', results.daily_reports, 'گزارشی پیدا نشد.') }}
+      {{ result_list('کانسرن‌ها', 'fa-triangle-exclamation', results.concerns, 'کانسرنی پیدا نشد.') }}
+    </div>
+  {% else %}
+    <p class="text-sm text-gray-400">عبارت جستجو را وارد کنید.</p>
+  {% endif %}
+</main>
+{% endblock %}
