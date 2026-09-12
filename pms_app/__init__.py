@@ -145,7 +145,7 @@ def _register_health_check(app: Flask) -> None:
     @app.get("/health")
     def health():
         """Liveness/readiness for Docker, k8s, load balancers."""
-        status = {"status": "ok", "app": app.config.get("APP_NAME", "iProject")}
+        status = {"status": "ok", "app": app.config.get("APP_NAME", "Project Agent")}
         try:
             from pms_app.extensions import db
             from sqlalchemy import text

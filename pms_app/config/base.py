@@ -67,7 +67,7 @@ class BaseConfig:
     # -------------------------------------------------
     # Application Branding
     # -------------------------------------------------
-    APP_NAME = os.getenv("APP_NAME", "iProject")
+    APP_NAME = os.getenv("APP_NAME", "Project Agent")
     APP_YEAR = os.getenv("APP_YEAR", "۱۴۰۴")
 
     # -------------------------------------------------

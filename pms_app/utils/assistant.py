@@ -1,6 +1,6 @@
 # Path: pms_app/utils/assistant.py
 """
-In-app help assistant: keyword FAQ for iProject (no external LLM required).
+In-app help assistant: keyword FAQ for Project Agent (no external LLM required).
 """
 from __future__ import annotations
 

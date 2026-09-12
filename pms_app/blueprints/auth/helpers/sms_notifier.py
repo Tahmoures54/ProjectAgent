@@ -66,7 +66,7 @@ def send_welcome_signup(user: User) -> None:
     if not phone:
         return
 
-    app_name = current_app.config.get("APP_NAME", "PMS")
+    app_name = current_app.config.get("APP_NAME", "Project Agent")
     name = (getattr(user, "full_name", "") or "").strip() or "کاربر عزیز"
     login_url = url_for("auth.login", _external=True)
     msg = f"{app_name}\nخوش آمدید {name}!\nثبت‌نام شما با موفقیت انجام شد.\nورود: {login_url}"
@@ -78,7 +78,7 @@ def send_login_notification(user: User, *, first_login: bool, new_device: bool) 
     if not phone:
         return
 
-    app_name = current_app.config.get("APP_NAME", "PMS")
+    app_name = current_app.config.get("APP_NAME", "Project Agent")
 
     if first_login and bool(current_app.config.get("SMS_WELCOME_FIRST_LOGIN_ENABLED", True)):
         if not _user_allows_sms(user, transactional=False):
@@ -112,6 +112,6 @@ def send_forgot_password(user: User, reset_link: str) -> None:
     if not phone:
         return
 
-    app_name = current_app.config.get("APP_NAME", "PMS")
+    app_name = current_app.config.get("APP_NAME", "Project Agent")
     msg = f"{app_name}\nلینک بازیابی رمز عبور:\n{reset_link}\nاگر شما درخواست نداده‌اید، نادیده بگیرید."
     _send(user, phone, "PASSWORD_RESET", msg, within=60)

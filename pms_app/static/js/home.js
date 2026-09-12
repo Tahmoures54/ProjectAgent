@@ -1,6 +1,6 @@
 /* Path: pms_app/static/js/home.js */
 /* ==========================================================
-   iProject Home Page Scripts
+   Project Agent Home Page Scripts
    Handles: Hero slider, counters, FAQ, scroll animations
    ========================================================== */
 

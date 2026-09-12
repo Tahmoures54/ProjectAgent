@@ -1,6 +1,6 @@
-# iProject — سامانه هوشمند کنترل پروژه و CBS
+# Project Agent — سامانه هوشمند کنترل پروژه و CBS
 
-**iProject** پلتفرم تحت‌وب **Project Controls** برای شرکت‌های مهندسی، پیمانکاری و مشاور است:  
+**Project Agent** پلتفرم تحت‌وب **Project Controls** برای شرکت‌های مهندسی، پیمانکاری و مشاور است:  
 **WBS · CBS · EVM · گزارش روزانه کارگاه · کانسرن با کنترل دسترسی · تاریخ جلالی · Multi-tenant**
 
 هدف: آماده‌ی **داده واقعی**، جذب کاربر، و جلوتر از نرم‌افزارهای صرفاً تسک‌محور یا اکسل‌محور.
@@ -9,7 +9,7 @@
 
 ## چرا از رقبا متمایز است؟
 
-| قابلیت | iProject | بسیاری از رقبا |
+| قابلیت | Project Agent | بسیاری از رقبا |
 |--------|----------|----------------|
 | Earned Value (CPI/SPI/EAC/S-Curve) | ✅ | محدود / ندارد |
 | CBS + قرارداد + صورت‌وضعیت + Excel | ✅ | جزئی |
@@ -63,8 +63,8 @@
 ## نصب توسعه
 
 ```bash
-git clone https://github.com/Tahmoures54/iProject.git
-cd iProject
+git clone https://github.com/Tahmoures54/ProjectAgent.git
+cd ProjectAgent
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
@@ -127,4 +127,4 @@ pytest -q
 
 ---
 
-**iProject** — کنترل پروژه را حرفه‌ای، بومی و قابل دفاع کنید.
+**Project Agent** — کنترل پروژه را حرفه‌ای، بومی و قابل دفاع کنید.

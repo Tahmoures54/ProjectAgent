@@ -355,7 +355,7 @@ def _maybe_send_plan_activated_sms(
     if not phone:
         return
 
-    app_name = current_app.config.get("APP_NAME", "PMS")
+    app_name = current_app.config.get("APP_NAME", "Project Agent")
     manage_url = url_for("billing.manage", _external=True)
 
     msg = (

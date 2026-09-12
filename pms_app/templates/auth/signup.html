@@ -1,7 +1,7 @@
 {# Path: pms_app/templates/auth/signup.html #}
 {% extends "base.html" %}
 
-{% block title %}ثبت‌نام | سیستم مدیریت پروژه هوشمند{% endblock %}
+{% block title %}ثبت‌نام | Project Agent{% endblock %}
 
 {% block content %}
 <div class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-indigo-50/50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4 py-8 md:py-12" dir="rtl">
@@ -110,7 +110,7 @@
         <a href="{{ url_for('auth.login') }}" class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline ml-1">وارد شوید</a>
       </p>
       <div class="mt-4 flex justify-center gap-4 text-xs text-gray-400">
-        <span>© {{ current_year|default('۲۰۲۴') }} PMS</span>
+        <span>© {{ current_year|default('۲۰۲۴') }} Project Agent</span>
         <a href="{{ url_for('main.privacy_policy') }}" class="hover:text-indigo-500">حریم خصوصی</a>
       </div>
     </div>

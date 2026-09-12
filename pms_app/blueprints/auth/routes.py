@@ -201,7 +201,7 @@ def enable_2fa():
         return redirect(url_for("main.dashboard"))
     session["2fa_secret"] = secret
 
-    issuer = current_app.config.get("APP_NAME", "PMS")
+    issuer = current_app.config.get("APP_NAME", "Project Agent")
     account = current_user.email or f"user-{current_user.id}"
     uri = build_provisioning_uri(secret, account, issuer)
 
