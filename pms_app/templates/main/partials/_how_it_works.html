@@ -14,7 +14,7 @@
             {'title': 'EVM و کانسرن', 'desc': 'شاخص‌ها را ببینید و دغدغه‌ها را با دسترسی درست پیگیری کنید.'}
         ] %}
         {% for s in steps %}
-        <li class="home-step" style="--i: {{ loop.index0 }}">
+        <li class="home-step{% if loop.first %} is-playing{% endif %}" style="--i: {{ loop.index0 }}">
             <span class="home-step-num">{{ loop.index }}</span>
             <h3>{{ s.title }}</h3>
             <p>{{ s.desc }}</p>

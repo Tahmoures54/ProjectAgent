@@ -12,6 +12,9 @@ def test_homepage_is_public_and_has_real_ctas(client, app):
     assert "EVM" in html
     assert "گزارش روزانه" in html
     assert "کانسرن" in html
+    assert "data-play-cards" in html
+    assert "home-stack-card is-playing" in html
+    assert "/pricing" in html
 
 
 def test_homepage_has_no_fake_metrics_or_quotes(client):
@@ -37,3 +40,10 @@ def test_homepage_uses_configured_free_days(client, app):
     app.config["FREE_DAYS"] = 90
     html = client.get("/").get_data(as_text=True)
     assert "۹۰" in html or "90" in html
+
+
+def test_guest_homepage_hides_app_dock(client):
+    html = client.get("/").get_data(as_text=True)
+    assert "dock-container" not in html
+    assert "پلن‌ها" in html
+    assert "شروع رایگان" in html

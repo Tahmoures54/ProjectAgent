@@ -7,12 +7,7 @@
     document.addEventListener("DOMContentLoaded", function () {
         initFaq();
         if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-            document.querySelectorAll("[data-play-cards] > *").forEach(function (card, i) {
-                if (i === 0 || !card.closest(".home-stack")) {
-                    card.classList.add("is-playing");
-                }
-            });
-            document.querySelectorAll(".home-stack-card").forEach(function (card) {
+            document.querySelectorAll("[data-play-cards] > *").forEach(function (card) {
                 card.classList.add("is-playing");
             });
             return;
@@ -25,12 +20,21 @@
             var cards = Array.prototype.slice.call(group.children);
             if (!cards.length) return;
             var interval = parseInt(group.getAttribute("data-play-interval"), 10) || 2400;
-            var index = 0;
+            var index = Math.max(0, cards.findIndex(function (card) {
+                return card.classList.contains("is-playing");
+            }));
             var timer = null;
+            var dotsRoot = group.parentElement
+                ? group.parentElement.querySelector("[data-play-dots]")
+                : null;
+            var dots = dotsRoot ? Array.prototype.slice.call(dotsRoot.children) : [];
 
             function show(next) {
                 cards.forEach(function (card, i) {
                     card.classList.toggle("is-playing", i === next);
+                });
+                dots.forEach(function (dot, i) {
+                    dot.classList.toggle("is-on", i === next);
                 });
                 index = next;
             }
@@ -49,21 +53,20 @@
                 timer = null;
             }
 
-            if (!("IntersectionObserver" in window)) {
-                start();
-                return;
-            }
+            start();
 
-            var observer = new IntersectionObserver(
-                function (entries) {
-                    entries.forEach(function (entry) {
-                        if (entry.isIntersecting) start();
-                        else stop();
-                    });
-                },
-                { threshold: 0.35 }
-            );
-            observer.observe(group);
+            if ("IntersectionObserver" in window) {
+                var observer = new IntersectionObserver(
+                    function (entries) {
+                        entries.forEach(function (entry) {
+                            if (entry.isIntersecting) start();
+                            else stop();
+                        });
+                    },
+                    { threshold: 0.2 }
+                );
+                observer.observe(group);
+            }
 
             group.addEventListener("mouseenter", stop);
             group.addEventListener("mouseleave", start);

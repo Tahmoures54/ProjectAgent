@@ -53,7 +53,7 @@
   {% block head %}{% endblock %}
 </head>
 
-<body class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 pb-28">
+<body class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 {% if current_user.is_authenticated %}pb-28{% else %}pb-8{% endif %}">
 
   {% set role_names = [] %}
   {% if current_user.is_authenticated and current_user.roles %}
@@ -106,15 +106,18 @@
       <div class="flex items-center gap-2 md:gap-4 shrink-0">
         <div class="hidden lg:flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/50 p-1 rounded-2xl backdrop-blur-sm">
           <a href="{{ url_for('main.home') }}" class="nav-link-modern">خانه</a>
+          {% if current_user.is_authenticated %}
           <a href="{{ url_for('projects.projects') }}" class="nav-link-modern">پروژه‌ها</a>
           <a href="{{ url_for('main.dashboard') }}" class="nav-link-modern">داشبورد</a>
-          {% if current_user.is_authenticated %}
           <a href="{{ url_for('daily_reports.index') }}" class="nav-link-modern">
             <i class="fa-solid fa-clipboard-list text-xs"></i> گزارش روزانه
           </a>
           <a href="{{ url_for('concerns.index') }}" class="nav-link-modern">
             <i class="fa-solid fa-triangle-exclamation text-xs"></i> کانسرن‌ها
           </a>
+          {% else %}
+          <a href="{{ url_for('billing.pricing') }}" class="nav-link-modern">پلن‌ها</a>
+          <a href="{{ url_for('main.help') }}" class="nav-link-modern">راهنما</a>
           {% endif %}
           {% if is_admin %}
             <a href="{{ url_for('users.users') }}" class="nav-link-modern">
@@ -123,10 +126,12 @@
           {% endif %}
         </div>
 
+        {% if current_user.is_authenticated %}
         <form method="get" action="{{ url_for('main.search') }}" class="hidden md:flex relative shrink-0">
           <i class="fa-solid fa-magnifying-glass absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
           <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="جستجوی هوشمند..." class="search-input" aria-label="جستجو">
         </form>
+        {% endif %}
 
         <button @click="$store.theme.toggle()" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-500 dark:text-slate-400 shrink-0" aria-label="تغییر تم">
           <i class="fa-solid fa-moon dark:hidden"></i>
@@ -176,6 +181,7 @@
     </div>
   </footer>
 
+  {% if current_user.is_authenticated %}
   <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-4">
     <div id="inbox-panel" class="chat-window hidden flex-col w-[90vw] max-w-sm max-h-[420px] bg-white dark:bg-slate-800 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-700 animate-fade-in-up origin-bottom">
       <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
@@ -255,6 +261,7 @@
       {% endif %}
     </div>
   </div>
+  {% endif %}
 
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 

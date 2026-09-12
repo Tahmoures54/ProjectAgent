@@ -15,7 +15,7 @@
             {'icon': 'fa-shield-halved', 'title': 'جداسازی شرکت‌ها', 'desc': 'هر شرکت فقط داده خودش را می‌بیند. نقش مالک، ادمین، مدیر، پیمانکار و ناظر.'}
         ] %}
         {% for b in benefits %}
-        <article class="home-benefit-card" style="--i: {{ loop.index0 }}">
+        <article class="home-benefit-card{% if loop.first %} is-playing{% endif %}" style="--i: {{ loop.index0 }}">
             <div class="home-benefit-icon"><i class="fas {{ b.icon }}" aria-hidden="true"></i></div>
             <h3>{{ b.title }}</h3>
             <p>{{ b.desc }}</p>

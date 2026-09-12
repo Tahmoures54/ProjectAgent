@@ -94,6 +94,10 @@ def _get_user_plan(user) -> str:
     return user_plan
 
 
+def _fa_digits(value) -> str:
+    return str(value).translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
+
+
 @bp.route("/")
 def home():
     raw = current_app.config.get("FREE_DAYS") or os.getenv("FREE_DAYS", "90")
@@ -101,7 +105,11 @@ def home():
         free_days = max(int(raw), 1)
     except (TypeError, ValueError):
         free_days = 90
-    return render_template("main/home.html", free_days=free_days)
+    return render_template(
+        "main/home.html",
+        free_days=free_days,
+        free_days_fa=_fa_digits(free_days),
+    )
 
 
 @bp.route("/dashboard")

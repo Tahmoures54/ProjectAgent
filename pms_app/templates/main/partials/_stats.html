@@ -11,7 +11,7 @@
             {'icon': 'fa-building', 'title': 'چندشرکتی', 'desc': 'داده هر شرکت جدا'}
         ] %}
         {% for c in caps %}
-        <article class="home-cap-card">
+        <article class="home-cap-card{% if loop.first %} is-playing{% endif %}">
             <i class="fas {{ c.icon }}" aria-hidden="true"></i>
             <h3>{{ c.title }}</h3>
             <p>{{ c.desc }}</p>

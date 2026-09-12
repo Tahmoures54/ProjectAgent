@@ -1,5 +1,6 @@
 {# Path: pms_app/templates/main/partials/_hero.html #}
 {% set days = free_days|default(90) %}
+{% set days_label = free_days_fa|default(days) %}
 <section class="home-hero" aria-label="معرفی Project Agent">
     <div class="home-hero-glow" aria-hidden="true"></div>
 
@@ -16,7 +17,7 @@
             <div class="home-cta-row">
                 {% if not current_user.is_authenticated %}
                     <a href="{{ url_for('auth.register') }}" class="home-btn home-btn-primary">
-                        شروع رایگان {{ days }} روزه
+                        شروع رایگان {{ days_label }} روزه
                     </a>
                     <a href="{{ url_for('auth.login') }}" class="home-btn home-btn-ghost">ورود</a>
                     <a href="{{ url_for('billing.pricing') }}" class="home-btn home-btn-text">پلن‌ها</a>
@@ -34,27 +35,53 @@
         </div>
 
         <div class="home-hero-stage" aria-label="نمایش ماژول‌ها">
-            <div class="home-stack" data-play-cards data-play-interval="2400">
-                <article class="home-stack-card">
+            <div class="home-stack" data-play-cards data-play-interval="2800" data-play-mode="stack">
+                <article class="home-stack-card is-playing">
                     <span class="home-stack-tag">گزارش روزانه</span>
                     <h2>کارگاه ثبت می‌کند؛ پیشرفت بعد از تأیید می‌نشیند</h2>
                     <p>نیرو، ماشین‌آلات و درصد پیشنهادی تا تأیید مدیر روی آیتم اعمال نمی‌شود.</p>
+                    <div class="home-stack-preview" aria-hidden="true">
+                        <span class="home-chip">در انتظار تأیید</span>
+                        <span class="home-bar"></span>
+                        <span class="home-bar home-bar-short"></span>
+                    </div>
                 </article>
                 <article class="home-stack-card">
                     <span class="home-stack-tag">EVM</span>
                     <h2>CPI و SPI از داده همان پروژه</h2>
                     <p>ارزش کسب‌شده، انحراف هزینه و زمان، و S-Curve روی قرارداد و آیتم واقعی.</p>
+                    <div class="home-stack-preview" aria-hidden="true">
+                        <span class="home-chip">شاخص واقعی</span>
+                        <span class="home-curve"></span>
+                    </div>
                 </article>
                 <article class="home-stack-card">
                     <span class="home-stack-tag">کانسرن</span>
                     <h2>دغدغه با سطح مشاهده مشخص</h2>
                     <p>خصوصی، اعضای پروژه، فقط مدیران پروژه، یا کل شرکت — بدون نشتی به شرکت دیگر.</p>
+                    <div class="home-stack-preview" aria-hidden="true">
+                        <span class="home-chip">چهار سطح دسترسی</span>
+                        <span class="home-bar"></span>
+                        <span class="home-bar home-bar-mid"></span>
+                    </div>
                 </article>
                 <article class="home-stack-card">
                     <span class="home-stack-tag">CBS / قرارداد</span>
                     <h2>آیتم قراردادی و ورود از اکسل</h2>
                     <p>WBS و CBS سلسله‌مراتبی؛ صورت‌وضعیت روی همان ساختار هزینه.</p>
+                    <div class="home-stack-preview" aria-hidden="true">
+                        <span class="home-chip">ورود اکسل</span>
+                        <span class="home-bars-col">
+                            <i></i><i></i><i></i><i></i>
+                        </span>
+                    </div>
                 </article>
+            </div>
+            <div class="home-stack-dots" data-play-dots aria-hidden="true">
+                <span class="is-on"></span>
+                <span></span>
+                <span></span>
+                <span></span>
             </div>
         </div>
     </div>

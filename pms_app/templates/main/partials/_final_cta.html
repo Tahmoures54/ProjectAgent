@@ -1,8 +1,9 @@
 {# Path: pms_app/templates/main/partials/_final_cta.html #}
 {% set days = free_days|default(90) %}
+{% set days_label = free_days_fa|default(days) %}
 <section class="home-cta" aria-label="شروع">
     <h2>با داده پروژه خودتان شروع کنید</h2>
-    <p>دوره رایگان {{ days }} روزه است. کارت بانکی برای ثبت‌نام لازم نیست. بعد از ورود، پروژه و گزارش واقعی خودتان را می‌سازید.</p>
+    <p>دوره رایگان {{ days_label }} روزه است. کارت بانکی برای ثبت‌نام لازم نیست. بعد از ورود، پروژه و گزارش واقعی خودتان را می‌سازید.</p>
 
     {% if not current_user.is_authenticated %}
         <div class="home-cta-row home-cta-row-center">

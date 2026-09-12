@@ -14,7 +14,7 @@
             {'title': 'ادمین شرکت', 'desc': 'کاربران، پروژه‌ها و دسترسی‌ها فقط در محدوده همان شرکت.'}
         ] %}
         {% for r in roles %}
-        <article class="home-audience-card" style="--i: {{ loop.index0 }}">
+        <article class="home-audience-card{% if loop.first %} is-playing{% endif %}" style="--i: {{ loop.index0 }}">
             <h3>{{ r.title }}</h3>
             <p>{{ r.desc }}</p>
         </article>
