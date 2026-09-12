@@ -13,7 +13,9 @@ def test_homepage_is_public_and_has_real_ctas(client, app):
     assert "گزارش روزانه" in html
     assert "کانسرن" in html
     assert "data-play-cards" in html
-    assert "home-stack-card is-playing" in html
+    assert "home-console" in html or "home-scene" in html
+    assert "home-skin" in html
+    assert "auth.register" not in html
     assert "/pricing" in html
 
 

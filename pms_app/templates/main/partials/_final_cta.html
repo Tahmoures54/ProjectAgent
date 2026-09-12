@@ -2,7 +2,8 @@
 {% set days = free_days|default(90) %}
 {% set days_label = free_days_fa|default(days) %}
 <section class="home-cta" aria-label="شروع">
-    <h2>با داده پروژه خودتان شروع کنید</h2>
+    <p class="home-kicker home-kicker-on-dark">شروع</p>
+    <h2>با داده پروژه خودتان وارد شوید</h2>
     <p>دوره رایگان {{ days_label }} روزه است. کارت بانکی برای ثبت‌نام لازم نیست. بعد از ورود، پروژه و گزارش واقعی خودتان را می‌سازید.</p>
 
     {% if not current_user.is_authenticated %}

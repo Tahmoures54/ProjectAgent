@@ -1,22 +1,23 @@
 {# Path: pms_app/templates/main/partials/_benefits.html #}
 <section id="benefits" class="home-section" aria-label="چرا Project Agent">
     <header class="home-section-head">
-        <h2>یک محصول برای چرخه واقعی کنترل پروژه</h2>
+        <p class="home-kicker">چرخه کنترل</p>
+        <h2>یک محصول برای کار واقعی دفتر فنی</h2>
         <p>رقبا اغلب تسک‌منیجر یا فایل اکسل‌اند. اینجا برنامه‌ریزی، اجرا، کنترل و حاکمیت داده در یک سامانه است.</p>
     </header>
 
-    <div class="home-benefit-grid" data-play-cards data-play-interval="2800">
+    <div class="home-benefit-grid" data-play-cards data-play-interval="2600">
         {% set benefits = [
-            {'icon': 'fa-sitemap', 'title': 'WBS و CBS واقعی', 'desc': 'ساختار شکست کار و هزینه با آیتم قراردادی و ورود اکسل — نه فقط چک‌لیست.'},
-            {'icon': 'fa-chart-pie', 'title': 'EVM قابل دفاع', 'desc': 'PV، EV، AC، CPI، SPI، EAC و S-Curve از داده همان پروژه و قرارداد.'},
-            {'icon': 'fa-clipboard-list', 'title': 'گزارش روزانه سایت', 'desc': 'پیمانکار می‌نویسد، مدیر تأیید می‌کند؛ پیشرفت فقط بعد از تأیید اعمال می‌شود.'},
-            {'icon': 'fa-triangle-exclamation', 'title': 'کانسرن با دسترسی', 'desc': 'فنی، ایمنی، زمان و قرارداد با سطح خصوصی / پروژه / مدیران / شرکت.'},
-            {'icon': 'fa-file-contract', 'title': 'قرارداد و صورت‌وضعیت', 'desc': 'قرارداد، الحاقیه و آیتم روی همان CBS برای دفتر فنی.'},
-            {'icon': 'fa-shield-halved', 'title': 'جداسازی شرکت‌ها', 'desc': 'هر شرکت فقط داده خودش را می‌بیند. نقش مالک، ادمین، مدیر، پیمانکار و ناظر.'}
+            {'n': '۰۱', 'title': 'WBS و CBS واقعی', 'desc': 'ساختار شکست کار و هزینه با آیتم قراردادی و ورود اکسل — نه فقط چک‌لیست.'},
+            {'n': '۰۲', 'title': 'EVM قابل دفاع', 'desc': 'PV، EV، AC، CPI، SPI، EAC و S-Curve از داده همان پروژه و قرارداد.'},
+            {'n': '۰۳', 'title': 'گزارش روزانه سایت', 'desc': 'پیمانکار می‌نویسد، مدیر تأیید می‌کند؛ پیشرفت فقط بعد از تأیید اعمال می‌شود.'},
+            {'n': '۰۴', 'title': 'کانسرن با دسترسی', 'desc': 'فنی، ایمنی، زمان و قرارداد با سطح خصوصی / پروژه / مدیران / شرکت.'},
+            {'n': '۰۵', 'title': 'قرارداد و صورت‌وضعیت', 'desc': 'قرارداد، الحاقیه و آیتم روی همان CBS برای دفتر فنی.'},
+            {'n': '۰۶', 'title': 'جداسازی شرکت‌ها', 'desc': 'هر شرکت فقط داده خودش را می‌بیند. نقش مالک، ادمین، مدیر، پیمانکار و ناظر.'}
         ] %}
         {% for b in benefits %}
         <article class="home-benefit-card{% if loop.first %} is-playing{% endif %}" style="--i: {{ loop.index0 }}">
-            <div class="home-benefit-icon"><i class="fas {{ b.icon }}" aria-hidden="true"></i></div>
+            <span class="home-benefit-n">{{ b.n }}</span>
             <h3>{{ b.title }}</h3>
             <p>{{ b.desc }}</p>
         </article>

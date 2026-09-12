@@ -53,7 +53,7 @@
   {% block head %}{% endblock %}
 </head>
 
-<body class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 {% if current_user.is_authenticated %}pb-28{% else %}pb-8{% endif %}">
+<body class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 {% if current_user.is_authenticated %}pb-28{% else %}pb-8{% endif %} {% block body_extra %}{% endblock %}">
 
   {% set role_names = [] %}
   {% if current_user.is_authenticated and current_user.roles %}

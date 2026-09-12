@@ -247,14 +247,30 @@ def logout():
     return redirect(url_for("main.home"))
 
 
+def _register_bootstrap() -> bool:
+    """Seed roles only if missing; never fail the signup page on a DB hiccup."""
+    try:
+        role_count = int(db.session.scalar(select(func.count(Role.id))) or 0)
+        if role_count == 0:
+            ensure_rbac_seed(update_existing=False, force_update_permissions=False)
+        return int(db.session.scalar(select(func.count(User.id))) or 0) == 0
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Register bootstrap failed")
+        return False
+
+
 @bp.route("/register", methods=["GET", "POST"])
 def register():
-    ensure_rbac_seed(update_existing=True)
-
     if current_user.is_authenticated:
         return redirect(url_for("main.dashboard"))
 
-    is_first_user = int(db.session.scalar(select(func.count(User.id))) or 0) == 0
+    try:
+        is_first_user = _register_bootstrap()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Register bootstrap failed")
+        is_first_user = False
     ensure_captcha(regenerate=(request.method == "GET"))
     form = RegisterForm()
 
