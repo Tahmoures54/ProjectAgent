@@ -6,7 +6,7 @@
 
   {% block meta %}{% endblock %}
 
-  <title>{% block title %}{{ config.get('APP_NAME', 'iProject') }}{% endblock %}</title>
+  <title>{% block title %}{{ config.get('APP_NAME', 'Project Agent') }}{% endblock %}</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -136,7 +136,7 @@
 
       <a class="flex items-center gap-2 no-underline shrink-0" href="{{ url_for('main.home') }}">
         <span class="text-xl font-bold text-slate-800 dark:text-white tracking-tight hidden md:inline">
-          {{ config.get('APP_NAME', 'iProject') }}
+          {{ config.get('APP_NAME', 'Project Agent') }}
         </span>
         <div class="w-10 h-10 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/30">
           <i class="fa-solid fa-layer-group text-white text-lg"></i>
@@ -168,7 +168,7 @@
 
   <footer class="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 py-6 mt-auto transition-colors duration-300">
     <div class="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
-      <p class="text-slate-400 dark:text-slate-500 text-sm">© {{ config.get('APP_YEAR', '۱۴۰۳') }} — پنل مدیریت هوشمند پروژه (iProject)</p>
+      <p class="text-slate-400 dark:text-slate-500 text-sm">© {{ config.get('APP_YEAR', '۱۴۰۳') }} — پنل مدیریت هوشمند پروژه (Project Agent)</p>
       <div class="flex gap-6 text-sm font-medium">
         <a href="{{ url_for('main.help') }}" class="text-slate-400 dark:text-slate-500 hover:text-brand-600 no-underline">راهنما</a>
         <a href="{{ url_for('main.terms_of_service') }}" class="text-slate-400 dark:text-slate-500 hover:text-brand-600 no-underline">قوانین</a>
@@ -204,7 +204,7 @@
     <div id="chat-window" class="chat-window hidden flex-col w-[90vw] max-w-sm h-[500px] bg-white dark:bg-slate-800 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-700 animate-fade-in-up origin-bottom">
       <div class="bg-gradient-to-l from-brand-600 to-indigo-500 p-4 text-white flex justify-between items-center shadow-md">
         <span class="font-bold flex items-center gap-2 text-sm">
-          <i class="fa-solid fa-sparkles"></i> دستیار هوشمند iProject
+          <i class="fa-solid fa-sparkles"></i> دستیار هوشمند Project Agent
         </span>
         <button onclick="toggleChat()" class="text-white/80 hover:text-white bg-transparent border-0 p-1 rounded-full hover:bg-white/10 transition" aria-label="بستن چت">
           <i class="fa-solid fa-xmark text-lg"></i>

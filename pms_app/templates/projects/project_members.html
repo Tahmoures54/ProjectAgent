@@ -1,7 +1,7 @@
 {# Path: pms_app/templates/projects/project_members.html #}
 {% extends "base.html" %}
 
-{% block title %}مدیریت اعضای پروژه {{ project.project_name }} | PMS{% endblock %}
+{% block title %}مدیریت اعضای پروژه {{ project.project_name }} | Project Agent{% endblock %}
 
 {% block content %}
 {% set can_manage = current_user.is_authenticated and (

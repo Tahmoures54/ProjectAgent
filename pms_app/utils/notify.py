@@ -14,9 +14,9 @@ from pms_app.utils.sms import send_sms
 
 def _app_name() -> str:
     try:
-        return current_app.config.get("APP_NAME") or "iProject"
+        return current_app.config.get("APP_NAME") or "Project Agent"
     except Exception:
-        return "iProject"
+        return "Project Agent"
 
 
 def _enabled(flag: str, default: bool = True) -> bool:

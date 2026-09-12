@@ -36,5 +36,6 @@
   }
 
   // Re-init after dynamic form loads (optional hook)
+  window.ProjectAgentInitJalaliDatepicker = init;
   window.iProjectInitJalaliDatepicker = init;
 })();

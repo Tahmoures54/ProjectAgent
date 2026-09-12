@@ -1,6 +1,6 @@
 # app.py
 """
-Main entry point for the PMS application.
+Main entry point for the Project Agent application.
 Handles app creation, logging setup, CLI commands and runtime info.
 """
 from __future__ import annotations

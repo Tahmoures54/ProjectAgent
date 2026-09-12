@@ -1,4 +1,4 @@
-iProject:
+Project Agent:
 |   .dockerignore
 |   .env
 |   .env.example

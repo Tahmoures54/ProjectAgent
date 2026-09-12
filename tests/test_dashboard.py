@@ -30,6 +30,15 @@ def test_health_ok(client):
     data = response.get_json()
     assert data["status"] == "ok"
     assert data["database"] == "ok"
+    assert data["app"] == "Project Agent"
+
+
+def test_api_health_branding(client):
+    response = client.get("/api/v1/health")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["service"] == "project-agent-api"
 
 
 def test_debug_routes_hidden_when_not_debug(client):
