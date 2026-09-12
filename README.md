@@ -96,6 +96,23 @@ curl https://your-domain/health
 
 ---
 
+## Vercel
+
+فایل `.env` در گیت نیست. اگر فقط ریپو را به Vercel وصل کنید، بدون متغیرهای محیطی فانکشن کرش می‌کند (`FUNCTION_INVOCATION_FAILED`).
+
+در **Project Settings → Environment Variables** (Production و Preview) این‌ها را بگذارید:
+
+| متغیر | مقدار |
+|--------|--------|
+| `PMS_ENV` | `production` |
+| `SECRET_KEY` | رشته تصادفی بلند |
+| `DATABASE_URL` | PostgreSQL (Neon). اگر اتصال Vercel/Neon `POSTGRES_URL` ساخت، همان را هم می‌خوانیم |
+| `OWNER_EMAIL` | ایمیل مالک پلتفرم |
+
+نکته: SQLite روی Vercel کار نمی‌کند (فایل‌سیستم فقط‌خواندنی است). از Postgres استفاده کنید. اگر URL با `postgres://` شروع شود، برنامه آن را به `postgresql+psycopg2://` تبدیل می‌کند.
+
+---
+
 ## نقش‌ها (RBAC)
 
 | نقش | کاربرد |

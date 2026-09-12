@@ -489,6 +489,9 @@ def enforce_paywall_after_free_period():
     if is_owner(current_user):
         return None
 
+    if current_app.config.get("SERVERLESS_DB_MISSING"):
+        return None
+
     endpoint = request.endpoint or ""
     if not endpoint or endpoint.startswith("static"):
         return None

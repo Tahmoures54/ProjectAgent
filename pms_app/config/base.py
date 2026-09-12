@@ -5,6 +5,8 @@ import re
 from datetime import timedelta
 from pathlib import Path
 
+from .database import is_postgres_url, is_vercel, resolve_database_url
+
 
 def _as_bool(value: str | None, default: bool = False) -> bool:
     if value is None:
@@ -46,13 +48,14 @@ class BaseConfig:
     # -------------------------------------------------
     # Database (ایمن‌سازی شده برای Vercel و Local)
     # -------------------------------------------------
-    _env_db_uri = os.getenv("DATABASE_URL") or os.getenv("SQLALCHEMY_DATABASE_URI")
+    _env_db_uri = resolve_database_url()
 
-    if _env_db_uri and _env_db_uri.startswith("postgresql"):
-        # اگر روی ورسل یا تست پستگرس بودیم
+    if is_postgres_url(_env_db_uri):
         SQLALCHEMY_DATABASE_URI = _env_db_uri
+    elif is_vercel():
+        # Never use a repo-path SQLite file on Vercel (read-only FS).
+        SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     else:
-        # در محیط محلی اگر SQLITE تنظیم شده بود آن را نرمالایز کن، وگرنه از پیش‌فرض استفاده کن
         local_sqlite = _env_db_uri or f"sqlite:///{DB_PATH.as_posix()}"
         SQLALCHEMY_DATABASE_URI = _normalize_sqlite_uri(PROJECT_DIR, local_sqlite)
 

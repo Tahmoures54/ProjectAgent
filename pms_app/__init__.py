@@ -36,6 +36,8 @@ def create_app(config_name: str | None = None, env: str | None = None) -> Flask:
     else:
         app.config.from_object("pms_app.config.development.DevelopmentConfig")
 
+    _apply_runtime_database_config(app)
+
     from . import extensions as ext
 
     init_extensions = getattr(ext, "init_extensions", None)
@@ -71,6 +73,69 @@ def create_app(config_name: str | None = None, env: str | None = None) -> Flask:
     _warn_insecure_secret(app, cfg=cfg)
 
     return app
+
+
+def _apply_runtime_database_config(app: Flask) -> None:
+    """Resolve DB URL after dotenv load so Vercel dashboard vars win, and never crash import."""
+    from pms_app.config.database import (
+        is_postgres_url,
+        is_vercel,
+        resolve_database_url,
+        vercel_engine_options,
+    )
+
+    db_url = resolve_database_url()
+    if db_url:
+        app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+    if not is_vercel():
+        return
+
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = vercel_engine_options()
+    if is_postgres_url(app.config.get("SQLALCHEMY_DATABASE_URI")):
+        return
+
+    app.config["SERVERLESS_DB_MISSING"] = True
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    app.logger.error(
+        "DATABASE_URL / POSTGRES_URL is missing on Vercel. "
+        "Set it in Project Settings → Environment Variables."
+    )
+    _register_missing_database_guard(app)
+
+
+def _register_missing_database_guard(app: Flask) -> None:
+    @app.before_request
+    def _vercel_requires_postgres():
+        from flask import Response, request
+
+        if (request.path or "").startswith("/static"):
+            return None
+        payload = {
+            "status": "misconfigured",
+            "database": "missing",
+            "error": "DATABASE_URL is not set on Vercel.",
+        }
+        if request.path == "/health" or (request.path or "").startswith("/api/"):
+            return jsonify(payload), 503
+        return Response(
+            """<!doctype html>
+<html lang="fa" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پیکربندی ناقص</title></head>
+<body style="font-family: Tahoma, sans-serif; padding: 2rem; line-height: 1.9; max-width: 40rem;">
+  <h1>دیتابیس روی Vercel تنظیم نشده</h1>
+  <p>فایل <code>.env</code> در گیت نیست و روی Vercel اعمال نمی‌شود. در
+  <strong>Project Settings → Environment Variables</strong> این متغیرها را برای Production بگذارید:</p>
+  <ul>
+    <li><code>DATABASE_URL</code> یا <code>POSTGRES_URL</code> — آدرس PostgreSQL (مثلاً Neon)</li>
+    <li><code>SECRET_KEY</code> — رشته تصادفی بلند</li>
+    <li><code>PMS_ENV=production</code></li>
+    <li><code>OWNER_EMAIL</code></li>
+  </ul>
+</body></html>""",
+            status=503,
+            mimetype="text/html; charset=utf-8",
+        )
 
 
 def _setup_logging(app: Flask) -> None:
@@ -178,6 +243,10 @@ def _register_context_processors(app: Flask) -> None:
 
             if not getattr(current_user, "is_authenticated", False):
                 return {"nav_inbox": empty}
+            from flask import current_app as flask_app
+
+            if flask_app.config.get("SERVERLESS_DB_MISSING"):
+                return {"nav_inbox": empty}
             from pms_app.utils.inbox import user_inbox
 
             return {"nav_inbox": user_inbox(current_user, limit=6)}
@@ -195,6 +264,9 @@ def _ensure_db_schema_and_seed(app: Flask, *, cfg: str) -> None:
     patched with create_all().
     """
     if app.config.get("TESTING") is True:
+        return
+
+    if app.config.get("SERVERLESS_DB_MISSING"):
         return
 
     auto_flag = (os.getenv("PMS_AUTO_CREATE_DB") or "").strip().lower()
