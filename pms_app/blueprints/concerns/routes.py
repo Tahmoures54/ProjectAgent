@@ -112,6 +112,17 @@ def _filter_visible(query):
     return query.filter(or_(*conditions))
 
 
+def _assignee_in_company(user_id: Optional[int], company_id: Optional[int]) -> Optional[int]:
+    if not user_id:
+        return None
+    target = db.session.get(User, int(user_id))
+    if not target:
+        return None
+    if company_id is not None and int(target.company_id or 0) != int(company_id):
+        return None
+    return int(target.id)
+
+
 def get_concern_or_403(concern_id: int) -> Concern:
     concern = db.session.get(Concern, concern_id)
     if not concern:
@@ -225,6 +236,7 @@ def create():
         assignee_id = form.assignee_id.data or None
         if assignee_id == 0:
             assignee_id = None
+        assignee_id = _assignee_in_company(assignee_id, cid)
 
         visibility = form.visibility.data or "project"
         if visibility == "project" and not project_id:
@@ -333,6 +345,16 @@ def edit(concern_id: int):
         assignee_id = form.assignee_id.data or None
         if assignee_id == 0:
             assignee_id = None
+        assignee_id = _assignee_in_company(assignee_id, concern.company_id)
+
+        if project_id:
+            project = db.session.get(Project, project_id)
+            if not project or not current_user.can_access_project(project):
+                flash("دسترسی به این پروژه ندارید.", "danger")
+                return redirect(url_for("concerns.detail", concern_id=concern_id))
+            if int(project.company_id) != int(concern.company_id):
+                flash("پروژه باید متعلق به همان شرکت باشد.", "danger")
+                return redirect(url_for("concerns.detail", concern_id=concern_id))
 
         tags = []
         if form.tags_raw.data:
@@ -435,6 +457,7 @@ def change_status(concern_id: int):
     new_assignee = form.assignee_id.data or None
     if new_assignee == 0:
         new_assignee = None
+    new_assignee = _assignee_in_company(new_assignee, concern.company_id)
 
     try:
         assigned_changed = False

@@ -16,6 +16,7 @@ from pms_app.models.project import Project
 from pms_app.models.project_membership import ProjectMembership
 from pms_app.models.user import User
 from pms_app.models.action_item import ActionItem
+from pms_app.models.item import ContractItem
 from pms_app.utils.entitlements import can_create
 from pms_app.utils.security import ensure_rbac_seed
 from pms_app.utils.evm import project_evm, project_s_curve
@@ -104,6 +105,29 @@ def _project_items_choices(project: Project):
             label = f"{item.wbs_code or item.id} — {item.title[:40]}"
             choices.append((item.id, label))
     return choices
+
+
+def _sanitize_action_links(action: ActionItem, project: Project) -> None:
+    if action.assignee_id == 0:
+        action.assignee_id = None
+    if action.contract_item_id == 0:
+        action.contract_item_id = None
+    if action.assignee_id:
+        member_ids = {
+            m.user_id
+            for m in ProjectMembership.query.filter_by(project_id=project.id, status="active")
+        }
+        if action.assignee_id not in member_ids:
+            action.assignee_id = None
+    if action.contract_item_id:
+        linked = db.session.get(ContractItem, int(action.contract_item_id))
+        if (
+            not linked
+            or int(linked.company_id or 0) != int(project.company_id)
+            or not linked.contract
+            or linked.contract.project_id != project.id
+        ):
+            action.contract_item_id = None
 
 
 @bp.before_request
@@ -466,6 +490,7 @@ def action_new(project_id: int):
             action.assignee_id = None
         if action.contract_item_id == 0:
             action.contract_item_id = None
+        _sanitize_action_links(action, project)
         if action.status == "done":
             action.mark_done()
         db.session.add(action)
@@ -502,6 +527,7 @@ def action_edit(project_id: int, action_id: int):
         action.contract_item_id = form.contract_item_id.data or None
         if action.contract_item_id == 0:
             action.contract_item_id = None
+        _sanitize_action_links(action, project)
         if action.status == "done" and not action.completed_at:
             action.mark_done()
         elif action.status != "done":

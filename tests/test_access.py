@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from pms_app.models import Company, Contract, ContractItem, DailyReport, Project, Role, User
+from pms_app.models import Company, Concern, Contract, ContractItem, DailyReport, Project, Role, User
 from pms_app.models.project_membership import ProjectMembership
 from pms_app.utils.security import configured_owner_emails
 
@@ -165,3 +165,134 @@ def test_owner_email_is_not_hardcoded(app, db_session):
         assert configured_owner_emails() == set()
         assert user.is_owner is False
         assert user.is_owner_by_email is False
+
+
+def test_search_dashboard_and_inbox_hide_other_companies(client, db_session):
+    company_a, project_a, _, _ = _company_project_contract(db_session, "SA")
+    company_b, project_b, _, _ = _company_project_contract(db_session, "SB")
+    admin_a = _user(db_session, "search_a", "company_admin", company_a.id)
+    _user(db_session, "search_b", "company_admin", company_b.id)
+
+    db_session.add(
+        DailyReport(
+            company_id=company_a.id,
+            project_id=project_a.id,
+            report_date=date.today(),
+            status="submitted",
+            submitted_by_id=admin_a.id,
+            work_performed="excavation unique-alpha",
+        )
+    )
+    db_session.add(
+        DailyReport(
+            company_id=company_b.id,
+            project_id=project_b.id,
+            report_date=date.today(),
+            status="submitted",
+            submitted_by_id=admin_a.id,
+            work_performed="excavation unique-beta",
+        )
+    )
+    db_session.add(
+        Concern(
+            company_id=company_a.id,
+            project_id=project_a.id,
+            title="leak unique-alpha",
+            visibility="company",
+            raised_by_id=admin_a.id,
+            status="open",
+            priority="high",
+            category="safety",
+        )
+    )
+    db_session.add(
+        Concern(
+            company_id=company_b.id,
+            project_id=project_b.id,
+            title="leak unique-beta",
+            visibility="company",
+            raised_by_id=admin_a.id,
+            status="open",
+            priority="high",
+            category="safety",
+        )
+    )
+    db_session.commit()
+
+    _login(client, admin_a.email)
+
+    search = client.get("/search?q=unique")
+    assert search.status_code == 200
+    html = search.get_data(as_text=True)
+    assert "unique-alpha" in html
+    assert "unique-beta" not in html
+    assert "Project SA" in html
+    assert "Project SB" not in html
+
+    dash = client.get("/dashboard")
+    assert dash.status_code == 200
+    dhtml = dash.get_data(as_text=True)
+    assert "Project SA" in dhtml or "PRJ-SA" in dhtml
+    assert "Project SB" not in dhtml
+    assert "PRJ-SB" not in dhtml
+
+
+def test_concerns_daily_reports_users_projects_isolated(client, db_session):
+    company_a, project_a, _, _ = _company_project_contract(db_session, "XA")
+    company_b, project_b, _, _ = _company_project_contract(db_session, "XB")
+    admin_a = _user(db_session, "iso_a", "company_admin", company_a.id)
+    admin_b = _user(db_session, "iso_b", "company_admin", company_b.id)
+
+    report = DailyReport(
+        company_id=company_a.id,
+        project_id=project_a.id,
+        report_date=date.today(),
+        status="submitted",
+        submitted_by_id=admin_a.id,
+    )
+    concern = Concern(
+        company_id=company_a.id,
+        project_id=project_a.id,
+        title="secret concern XA",
+        visibility="company",
+        raised_by_id=admin_a.id,
+        status="open",
+        priority="medium",
+        category="technical",
+    )
+    db_session.add_all([report, concern])
+    db_session.commit()
+
+    _login(client, admin_b.email)
+    assert client.get(f"/projects/{project_a.id}").status_code in (403, 404)
+    assert client.get(f"/daily-reports/{report.id}").status_code in (403, 404)
+    assert client.get(f"/concerns/{concern.id}").status_code in (403, 404)
+    assert client.get(f"/users/{admin_a.id}/edit").status_code in (403, 404)
+
+
+def test_progress_apply_ignores_other_company_items(db_session):
+    _, project_a, _, item_a = _company_project_contract(db_session, "PA")
+    _, _, _, item_b = _company_project_contract(db_session, "PB")
+    admin = _user(db_session, "prog_a", "company_admin", project_a.company_id)
+    item_a.actual_progress_percentage = 10
+    item_b.actual_progress_percentage = 10
+    report = DailyReport(
+        company_id=project_a.company_id,
+        project_id=project_a.id,
+        report_date=date.today(),
+        status="submitted",
+        submitted_by_id=admin.id,
+        progress_updates=[
+            {"contract_item_id": item_a.id, "progress_percent": 40},
+            {"contract_item_id": item_b.id, "progress_percent": 99},
+        ],
+    )
+    db_session.add(report)
+    db_session.commit()
+
+    report.approve(admin.id, apply_progress=True)
+    db_session.commit()
+
+    assert float(item_a.actual_progress_percentage) == 40
+    assert float(item_b.actual_progress_percentage) == 10
+

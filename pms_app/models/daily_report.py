@@ -293,7 +293,11 @@ class DailyReport(db.Model):
             if not item_id:
                 continue
             item = db.session.get(ContractItem, int(item_id))
-            if not item or item.contract.project_id != self.project_id:
+            if not item:
+                continue
+            if int(item.company_id or 0) != int(self.company_id or 0):
+                continue
+            if not item.contract or item.contract.project_id != self.project_id:
                 continue
             pct = upd.get("progress_percent")
             if pct is not None:
