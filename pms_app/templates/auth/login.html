@@ -4,10 +4,10 @@
 
 {% block content %}
 <div class="min-h-screen bg-slate-50 dark:bg-gray-950 flex items-center justify-center px-4 py-12" dir="rtl">
-    <div class="w-full max-w-md bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl shadow-2xl rounded-3xl p-8 md:p-10 border border-white dark:border-gray-800 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div class="w-full max-w-md bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl shadow-2xl rounded-3xl p-8 md:p-10 border border-white dark:border-gray-800">
         
         <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-blue-600 shadow-lg mb-4 ring-4 ring-indigo-50 dark:ring-indigo-900/20">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-teal-400 shadow-lg mb-4 ring-4 ring-brand-50 dark:ring-brand-900/20">
                 <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                 </svg>
@@ -20,7 +20,7 @@
             {% if messages %}
                 <div class="space-y-3 mb-6">
                     {% for category, message in messages %}
-                        <div class="flex items-center p-4 text-sm rounded-2xl border animate-pulse 
+                        <div class="flex items-center p-4 text-sm rounded-2xl border 
                             {% if category=='success' %}bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800
                             {% else %}bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800{% endif %}">
                             <svg class="w-5 h-5 ml-2 shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -39,11 +39,11 @@
             <div class="space-y-2">
                 <label for="{{ form.email.id }}" class="block text-sm font-bold text-gray-700 dark:text-gray-300 mr-1">آدرس ایمیل</label>
                 <div class="relative group">
-                    <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500 transition-colors">
+                    <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-brand-500 transition-colors">
                         <i class="fas fa-envelope text-lg"></i>
                     </div>
                     {{ form.email(
-                        class="block w-full pr-11 pl-4 py-4 bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 rounded-2xl transition-all outline-none text-gray-900 dark:text-white placeholder-gray-400",
+                        class="block w-full pr-11 pl-4 py-4 bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-brand-500 focus:bg-white dark:focus:bg-gray-900 rounded-2xl transition-all outline-none text-gray-900 dark:text-white placeholder-gray-400",
                         placeholder="example@mail.com"
                     ) }}
                 </div>
@@ -53,18 +53,18 @@
             <div class="space-y-2">
                 <div class="flex justify-between items-center px-1">
                     <label for="{{ form.password.id }}" class="block text-sm font-bold text-gray-700 dark:text-gray-300">رمز عبور</label>
-                    <a href="{{ url_for('auth.forgot_password') }}" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors">فراموشی رمز؟</a>
+                    <a href="{{ url_for('auth.forgot_password') }}" class="text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-700 transition-colors">فراموشی رمز؟</a>
                 </div>
                 <div class="relative group" x-data="{ show: false }">
-                    <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500 transition-colors">
+                    <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-brand-500 transition-colors">
                         <i class="fas fa-lock text-lg"></i>
                     </div>
                     {{ form.password(
-                        class="block w-full pr-11 pl-12 py-4 bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 rounded-2xl transition-all outline-none text-gray-900 dark:text-white placeholder-gray-400",
+                        class="block w-full pr-11 pl-12 py-4 bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-brand-500 focus:bg-white dark:focus:bg-gray-900 rounded-2xl transition-all outline-none text-gray-900 dark:text-white placeholder-gray-400",
                         placeholder="••••••••",
                         id="password-field"
                     ) }}
-                    <button type="button" onclick="togglePassword()" class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400 hover:text-indigo-500 transition-colors">
+                    <button type="button" onclick="togglePassword()" class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400 hover:text-brand-500 transition-colors">
                         <i id="toggle-icon" class="fas fa-eye"></i>
                     </button>
                 </div>
@@ -74,15 +74,15 @@
             <div class="flex items-center px-1">
                 <label class="relative flex items-center cursor-pointer">
                     {{ form.remember(class="sr-only peer") }}
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:-translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-300 dark:peer-focus:ring-brand-800 rounded-full peer dark:bg-gray-700 peer-checked:after:-translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-600"></div>
                     <span class="mr-3 text-sm font-bold text-gray-600 dark:text-gray-400">مرا به خاطر بسپار</span>
                 </label>
             </div>
 
-            <button type="submit" id="submit-btn" class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 transition-all shadow-lg shadow-indigo-500/20 overflow-hidden">
-                <span class="relative z-10 flex items-center gap-2">
+            <button type="submit" id="submit-btn" class="w-full flex justify-center py-4 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-brand-600 to-teal-500 hover:from-brand-700 hover:to-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-500/30 transition shadow-lg shadow-brand-500/20">
+                <span class="flex items-center gap-2">
                     <span>ورود به پنل کاربری</span>
-                    <i class="fas fa-arrow-left transition-transform group-hover:-translate-x-1"></i>
+                    <i class="fas fa-arrow-left"></i>
                 </span>
             </button>
         </form>
@@ -90,7 +90,7 @@
         <div class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
             <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">
                 هنوز عضو نشده‌اید؟
-                <a href="{{ url_for('auth.register') }}" class="text-indigo-600 dark:text-indigo-400 font-extrabold hover:underline underline-offset-4">ثبت‌نام رایگان</a>
+                <a href="{{ url_for('auth.register') }}" class="text-brand-600 dark:text-brand-400 font-extrabold hover:underline underline-offset-4">ثبت‌نام رایگان</a>
             </p>
         </div>
     </div>
