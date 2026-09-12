@@ -46,7 +46,7 @@
     }
 
     var revealTargets = document.querySelectorAll(
-        ".bento__item, .stat-card, .price-card, .section-head, .audience-card, .step-card, .proof-card"
+        ".bento__item, .stat-card, .price-card, .audience-card, .step-card, .proof-card"
     );
     if (reduceMotion) {
         revealTargets.forEach(function (el) {
@@ -57,15 +57,13 @@
             el.classList.add("reveal");
         });
         var revealObserver = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry, i) {
+            entries.forEach(function (entry) {
                 if (entry.isIntersecting) {
-                    window.setTimeout(function () {
-                        entry.target.classList.add("is-visible");
-                    }, i * 60);
+                    entry.target.classList.add("is-visible");
                     revealObserver.unobserve(entry.target);
                 }
             });
-        }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
+        }, { threshold: 0.05, rootMargin: "0px 0px 15% 0px" });
         revealTargets.forEach(function (el) {
             revealObserver.observe(el);
         });

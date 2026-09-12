@@ -75,6 +75,10 @@ body.home-skin > footer {
     background: var(--bg);
 }
 
+.home-page section {
+    scroll-margin-top: 84px;
+}
+
 .home-page * {
     box-sizing: border-box;
 }
@@ -175,7 +179,7 @@ body.home-skin > footer {
 .hero {
     position: relative;
     padding: 100px 0 120px;
-    overflow: hidden;
+    overflow: visible;
     isolation: isolate;
 }
 
@@ -334,6 +338,7 @@ body.home-skin > footer {
 .hero__visual {
     position: relative;
     perspective: 1600px;
+    padding: 28px 52px;
 }
 
 .hero__mockup {
@@ -345,6 +350,7 @@ body.home-skin > footer {
     overflow: visible;
     transform: rotate(-2deg);
     transition: transform var(--transition);
+    direction: ltr;
 }
 
 .hero__mockup:hover {
@@ -400,13 +406,15 @@ body.home-skin > footer {
 }
 
 .hero__mockup-float--1 {
-    top: 18%;
-    left: -28px;
+    top: 14%;
+    right: calc(100% + 10px);
+    left: auto;
 }
 
 .hero__mockup-float--2 {
-    bottom: 18%;
-    right: -28px;
+    bottom: 14%;
+    right: calc(100% + 10px);
+    left: auto;
     animation-delay: -2s;
 }
 
@@ -425,6 +433,8 @@ body.home-skin > footer {
     flex-direction: column;
     gap: 4px;
     min-width: 90px;
+    direction: rtl;
+    text-align: start;
 }
 
 .mini-stat__label {
@@ -603,24 +613,6 @@ body.home-skin > footer {
     gap: 20px;
 }
 
-@media (max-width: 900px) {
-    .bento {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .bento__item--lg {
-        grid-column: span 2;
-    }
-}
-
-@media (max-width: 600px) {
-    .bento,
-    .bento__item--lg {
-        grid-template-columns: 1fr;
-        grid-column: span 1;
-    }
-}
-
 .bento__item {
     position: relative;
     padding: 28px;
@@ -631,14 +623,30 @@ body.home-skin > footer {
     transition: all var(--transition);
 }
 
+.bento__item--lg {
+    grid-column: span 2;
+}
+
+@media (max-width: 900px) {
+    .bento {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .bento {
+        grid-template-columns: 1fr;
+    }
+
+    .bento__item--lg {
+        grid-column: span 1;
+    }
+}
+
 .bento__item:hover {
     border-color: var(--brand-500);
     transform: translateY(-4px);
     box-shadow: var(--shadow);
-}
-
-.bento__item--lg {
-    grid-column: span 2;
 }
 
 .bento__icon {
@@ -1115,6 +1123,10 @@ body.home-skin > footer {
 
 .price-card__price {
     margin-bottom: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
 }
 
 .price-card__price span {
@@ -1126,7 +1138,7 @@ body.home-skin > footer {
 .price-card__price small {
     color: var(--ink-500);
     font-size: 14px;
-    margin-inline-start: 6px;
+    white-space: nowrap;
 }
 
 .price-card__features {
@@ -1213,13 +1225,22 @@ body.home-skin > footer {
 
 .reveal {
     opacity: 0;
-    transform: translateY(20px);
-    transition: all 700ms ease;
+    transform: translateY(16px);
+    animation: reveal-failsafe 0.45s 0.85s forwards;
 }
 
 .reveal.is-visible {
     opacity: 1;
     transform: none;
+    animation: none;
+    transition: opacity 500ms ease, transform 500ms ease;
+}
+
+@keyframes reveal-failsafe {
+    to {
+        opacity: 1;
+        transform: none;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
