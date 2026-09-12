@@ -10,9 +10,9 @@ from sqlalchemy import func
 
 from pms_app.extensions import db
 
-# Config key for the system owner email
+# Config keys for platform owner emails (comma-separated OWNER_EMAILS supported)
 OWNER_EMAIL_KEY = "OWNER_EMAIL"
-DEFAULT_OWNER_EMAIL = "tahmoures_p@hotmail.com"
+OWNER_EMAILS_KEY = "OWNER_EMAILS"
 
 # Default system roles (RBAC seed)
 # permissions are comma-separated strings. Use '*' for full access.
@@ -94,13 +94,29 @@ def _normalize_email(email: Optional[str]) -> str:
     return (email or "").strip().lower()
 
 
+def configured_owner_emails() -> set[str]:
+    """Owner identity comes only from config, never from a hardcoded inbox."""
+    emails: set[str] = set()
+    try:
+        cfg = current_app.config
+    except Exception:
+        return emails
+    for key in (OWNER_EMAIL_KEY, OWNER_EMAILS_KEY):
+        raw = cfg.get(key) or ""
+        for part in str(raw).split(","):
+            email = _normalize_email(part)
+            if email:
+                emails.add(email)
+    return emails
+
+
 def is_owner(user=None) -> bool:
     """
     Return True if the given user (or current_user) is considered platform owner.
     This checks:
       - user.is_owner property (if present)
       - has_role('owner')
-      - email match with OWNER_EMAIL config
+      - email match with OWNER_EMAIL / OWNER_EMAILS config
     """
     if user is None:
         user = current_user
@@ -115,9 +131,7 @@ def is_owner(user=None) -> bool:
     if hasattr(user, "has_role") and user.has_role("owner"):
         return True
 
-    # config-based owner email
-    owner_email = current_app.config.get(OWNER_EMAIL_KEY, DEFAULT_OWNER_EMAIL)
-    return _normalize_email(getattr(user, "email", "")) == _normalize_email(owner_email)
+    return _normalize_email(getattr(user, "email", "")) in configured_owner_emails()
 
 
 def is_company_admin(user=None) -> bool:

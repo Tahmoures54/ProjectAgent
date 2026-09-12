@@ -5,7 +5,6 @@ from decimal import Decimal, InvalidOperation
 from io import BytesIO, StringIO
 from flask import (
     Response,
-    abort,
     current_app,
     flash,
     redirect,
@@ -22,8 +21,9 @@ from pms_app.extensions import db
 from pms_app.models.contract import Contract
 from pms_app.models.item import ContractItem
 from pms_app.utils.security import permission_required
+from pms_app.utils.access import get_contract_or_403, get_item_or_403
 from . import bp
-from .forms import DeleteForm, ItemForm, ImportExcelForm  # ImportExcelForm را از forms.py ایمپورت کن
+from .forms import DeleteForm, ItemForm, ImportExcelForm
 
 def _require_openpyxl():
     try:
@@ -65,9 +65,7 @@ def _to_date(v):
 @login_required
 @permission_required("items.read")
 def items(contract_id: int):
-    contract = db.session.get(Contract, contract_id)
-    if not contract:
-        abort(404)
+    contract = get_contract_or_403(contract_id)
 
     q = request.args.get("q", "").strip()
     status = request.args.get("status", "").strip()
@@ -118,9 +116,7 @@ def items(contract_id: int):
 @login_required
 @permission_required("items.read")
 def items_template_xlsx(contract_id: int):
-    contract = db.session.get(Contract, contract_id)
-    if not contract:
-        abort(404)
+    contract = get_contract_or_403(contract_id)
 
     Workbook, _ = _require_openpyxl()
     if Workbook is None:
@@ -179,9 +175,7 @@ def items_template_xlsx(contract_id: int):
 @login_required
 @permission_required("items.write")
 def items_import(contract_id: int):
-    contract = db.session.get(Contract, contract_id)
-    if not contract:
-        abort(404)
+    contract = get_contract_or_403(contract_id)
 
     form = ImportExcelForm()
     if not form.validate_on_submit():
@@ -226,6 +220,7 @@ def items_import(contract_id: int):
 
             item = ContractItem(
                 contract_id=contract_id,
+                company_id=contract.company_id,
                 created_by_id=current_user.id,
                 updated_by_id=current_user.id,
             )
@@ -308,14 +303,13 @@ def items_import(contract_id: int):
 @login_required
 @permission_required("items.write")
 def item_new(contract_id: int):
-    contract = db.session.get(Contract, contract_id)
-    if not contract:
-        abort(404)
+    contract = get_contract_or_403(contract_id)
 
     form = ItemForm()
     if form.validate_on_submit():
         item = ContractItem(
             contract_id=contract_id,
+            company_id=contract.company_id,
             created_by_id=current_user.id,
             updated_by_id=current_user.id,
         )
@@ -340,13 +334,8 @@ def item_new(contract_id: int):
 @login_required
 @permission_required("items.write")
 def item_edit(item_id: int):
-    item = db.session.get(ContractItem, item_id)
-    if not item:
-        abort(404)
-
-    contract = db.session.get(Contract, item.contract_id)
-    if not contract:
-        abort(404)
+    item = get_item_or_403(item_id)
+    contract = item.contract
 
     form = ItemForm(obj=item)
     if form.validate_on_submit():
@@ -371,9 +360,7 @@ def item_edit(item_id: int):
 @login_required
 @permission_required("items.write")
 def item_delete(item_id: int):
-    item = db.session.get(ContractItem, item_id)
-    if not item:
-        abort(404)
+    item = get_item_or_403(item_id)
 
     form = DeleteForm()
     if not form.validate_on_submit():
@@ -395,9 +382,7 @@ def item_delete(item_id: int):
 @login_required
 @permission_required("items.read")
 def items_export(contract_id: int):
-    contract = db.session.get(Contract, contract_id)
-    if not contract:
-        abort(404)
+    contract = get_contract_or_403(contract_id)
 
     items_list = ContractItem.query.filter_by(contract_id=contract_id).order_by(ContractItem.id).all()
 

@@ -34,6 +34,7 @@ def get_blueprints() -> List[Blueprint]:
     from pms_app.blueprints.billing import bp as billing_bp
     from pms_app.blueprints.daily_reports import bp as daily_reports_bp
     from pms_app.blueprints.concerns import bp as concerns_bp
+    from pms_app.blueprints.api import api_bp
 
     return [
         main_bp,
@@ -46,6 +47,7 @@ def get_blueprints() -> List[Blueprint]:
         billing_bp,
         daily_reports_bp,
         concerns_bp,
+        api_bp,
     ]
 
 

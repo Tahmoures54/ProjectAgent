@@ -4,11 +4,9 @@ import inspect
 import os
 import sys
 import logging
-from importlib import import_module
 from pathlib import Path
-from pkgutil import iter_modules
 
-from flask import Blueprint, Flask, jsonify
+from flask import Flask, jsonify
 
 
 def create_app(config_name: str | None = None, env: str | None = None) -> Flask:
@@ -189,10 +187,12 @@ def _register_context_processors(app: Flask) -> None:
 
 def _ensure_db_schema_and_seed(app: Flask, *, cfg: str) -> None:
     """
-    Ensure schema exists for real data.
-    - Empty DB → create_all
-    - Existing DB with missing tables (e.g. daily_reports, concerns) → create missing only
-    Production: only if PMS_AUTO_CREATE_DB=1 (prefer Alembic migrations)
+    Bootstrap an empty database for local/dev.
+
+    Schema changes on an existing database must go through Alembic.
+    Production never auto-creates unless PMS_AUTO_CREATE_DB=1, and even then
+    only an empty database is created — missing tables on a live DB are not
+    patched with create_all().
     """
     if app.config.get("TESTING") is True:
         return
@@ -212,23 +212,21 @@ def _ensure_db_schema_and_seed(app: Flask, *, cfg: str) -> None:
         with app.app_context():
             inspector = sa_inspect(db.engine)
             existing_tables = set(inspector.get_table_names())
-
-            # All model tables registered on metadata
             expected = set(db.metadata.tables.keys())
             missing = expected - existing_tables
+            empty = not existing_tables or existing_tables == {"alembic_version"}
 
-            if not existing_tables or existing_tables == {"alembic_version"}:
+            if empty:
                 app.logger.warning(
                     "Database is empty (tables=%s). Running db.create_all() ...",
                     sorted(existing_tables),
                 )
                 db.create_all()
             elif missing:
-                app.logger.warning(
-                    "Missing tables detected: %s — creating them via create_all (checkfirst=True)",
+                app.logger.error(
+                    "Missing tables %s. Run Alembic migrations; create_all is not used on non-empty databases.",
                     sorted(missing),
                 )
-                db.create_all()
 
             ensure_rbac_seed()
 
@@ -239,59 +237,17 @@ def _ensure_db_schema_and_seed(app: Flask, *, cfg: str) -> None:
 
 
 def _register_blueprints(app: Flask) -> None:
-    from . import blueprints as bp_pkg
+    from pms_app.blueprints import get_blueprints
 
     registered_total = 0
-
-    for m in iter_modules(bp_pkg.__path__):
-        bp_name = m.name
-        if bp_name.startswith("_"):
-            continue
-
-        module = None
-        last_exc: Exception | None = None
-
-        for mod_path in (
-            f"pms_app.blueprints.{bp_name}.routes",
-            f"pms_app.blueprints.{bp_name}",
-        ):
-            try:
-                module = import_module(mod_path)
-                last_exc = None
-                break
-            except Exception as e:
-                last_exc = e
-                app.logger.exception("Blueprint import failed: %s", mod_path)
-
-        if module is None:
-            if _is_debug(app) and last_exc is not None:
-                raise last_exc
-            continue
-
-        blueprints = [v for v in vars(module).values() if isinstance(v, Blueprint)]
-
-        for attr in ("bp", "blueprint"):
-            v = getattr(module, attr, None)
-            if isinstance(v, Blueprint) and v not in blueprints:
-                blueprints.append(v)
-
-        if not blueprints:
-            app.logger.warning(
-                "No Blueprint object found for '%s' in %s",
-                bp_name,
-                module.__name__,
-            )
-            continue
-
-        for bp in blueprints:
-            app.register_blueprint(bp)
-            registered_total += 1
-            app.logger.info(
-                "Registered blueprint: name=%s url_prefix=%s",
-                bp.name,
-                bp.url_prefix,
-            )
-
+    for bp in get_blueprints():
+        app.register_blueprint(bp)
+        registered_total += 1
+        app.logger.info(
+            "Registered blueprint: name=%s url_prefix=%s",
+            bp.name,
+            bp.url_prefix,
+        )
     app.logger.info("Total registered blueprints: %s", registered_total)
 
 

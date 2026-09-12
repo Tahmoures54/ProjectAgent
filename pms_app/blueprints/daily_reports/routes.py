@@ -22,17 +22,14 @@ from pms_app.models.project import Project
 from pms_app.models.project_membership import ProjectMembership
 from pms_app.utils.notify import notify_daily_report_decision, notify_daily_report_submitted
 from pms_app.utils.security import ensure_rbac_seed
+from pms_app.utils.access import (
+    current_company_id as _company_id,
+    get_project_or_403,
+    scope_daily_reports_query as scope_reports_query,
+)
 
 from . import bp
 from .forms import DailyReportForm, ReviewForm
-
-
-def _company_id() -> Optional[int]:
-    cid = getattr(current_user, "company_id", None)
-    try:
-        return int(cid) if cid is not None else None
-    except (TypeError, ValueError):
-        return None
 
 
 def _parse_lines_to_list(raw: str, expected_parts: int = 2) -> List[dict]:
@@ -116,15 +113,6 @@ def can_submit_for_project(project: Project) -> bool:
     return bool(membership)
 
 
-def get_project_or_403(project_id: int) -> Project:
-    project = db.session.get(Project, project_id)
-    if not project:
-        abort(404)
-    if not current_user.can_access_project(project):
-        abort(403)
-    return project
-
-
 def get_report_or_403(report_id: int) -> DailyReport:
     report = db.session.get(DailyReport, report_id)
     if not report:
@@ -132,22 +120,6 @@ def get_report_or_403(report_id: int) -> DailyReport:
     if not current_user.can_access_project(report.project):
         abort(403)
     return report
-
-
-def scope_reports_query(base_query):
-    if current_user.is_owner:
-        return base_query
-    cid = _company_id()
-    if cid is None:
-        abort(403)
-    base_query = base_query.filter(DailyReport.company_id == cid)
-    if current_user.is_company_admin:
-        return base_query
-    return (
-        base_query.join(ProjectMembership, ProjectMembership.project_id == DailyReport.project_id)
-        .filter(ProjectMembership.user_id == current_user.id)
-        .filter(ProjectMembership.status == "active")
-    )
 
 
 @bp.before_request

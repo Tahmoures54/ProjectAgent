@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from pms_app.extensions import db
 from pms_app.models.role import Role
 from pms_app.models.user import User
-from pms_app.utils.security import ensure_rbac_seed, is_owner as is_owner_user
+from pms_app.utils.security import configured_owner_emails, ensure_rbac_seed, is_owner as is_owner_user
 
 from . import bp
 from .forms import ChangePasswordForm, ForgotPasswordForm, LoginForm, RegisterForm, ResetPasswordForm
@@ -299,8 +299,8 @@ def register():
             if company is not None and hasattr(company, "created_by_user_id"):
                 company.created_by_user_id = int(user.id)
 
-            owner_email = (current_app.config.get("OWNER_EMAIL") or "tahmoures_p@hotmail.com").strip().lower()
-            if email != owner_email:
+            owner_emails = configured_owner_emails()
+            if email not in owner_emails:
                 if subscription.is_company_based() and company is not None:
                     subscription.get_or_create_for_company(
                         company_id=int(company.id), billing_user_id=int(user.id)
@@ -358,8 +358,8 @@ def _get_role(name: str) -> Role | None:
 
 
 def _assign_roles_and_company(user: User, email: str, company_name: str):
-    owner_email = (current_app.config.get("OWNER_EMAIL") or "tahmoures_p@hotmail.com").strip().lower()
-    owner_signup = bool(email) and (email == owner_email)
+    owner_emails = configured_owner_emails()
+    owner_signup = bool(email) and email in owner_emails
 
     owner_role = _get_role("owner")
     company_admin_role = _get_role("company_admin")
