@@ -65,12 +65,12 @@
 
   <!-- ========== HEADER با ارزش‌آفرینی ========== -->
   <div class="text-center mb-12">
-    <div class="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-full text-sm font-semibold mb-4">
+    <div class="inline-flex items-center gap-2 bg-brand-50 text-brand-700 px-4 py-2 rounded-full text-sm font-semibold mb-4">
       <i class="fas fa-crown"></i>
-      <span>بیش از ۵۰۰ تیم به ما اعتماد دارند</span>
+      <span>اشتراک سالیانه · بدون هزینه پنهان</span>
     </div>
     <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 leading-tight">
-      پلن مناسب <span class="text-indigo-600">تیم خود</span> را انتخاب کنید
+      پلن مناسب <span class="text-brand-600">تیم خود</span> را انتخاب کنید
     </h1>
     <p class="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
       بدون هزینه پنهان، بدون دردسر. همه پلن‌ها شامل به‌روزرسانی‌های دائمی و پشتیبانی هستند.
@@ -79,10 +79,10 @@
     {% if tier %}
     <div class="mt-8 inline-flex flex-wrap items-center justify-center gap-3 bg-white border border-gray-200 rounded-2xl px-6 py-4 shadow-sm">
       <span class="text-gray-700 font-medium">اشتراک فعلی شما:</span>
-      <span class="bg-indigo-600 text-white px-5 py-2 rounded-xl font-bold text-lg shadow-sm">
+      <span class="bg-brand-600 text-white px-5 py-2 rounded-xl font-bold text-lg shadow-sm">
         {{ tier_badge }}
       </span>
-      <a href="{{ url_for('billing.manage') }}" class="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 font-semibold transition">
+      <a href="{{ url_for('billing.manage') }}" class="flex items-center gap-2 text-brand-600 hover:text-brand-800 font-semibold transition">
         <i class="fas fa-cog"></i>
         مدیریت اشتراک
       </a>
@@ -127,7 +127,7 @@
             شروع کنید
           </button>
           <a href="{{ url_for('billing.manage') if current_user.is_authenticated else url_for('auth.login') }}" 
-             class="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-sm hover:bg-indigo-100 transition text-center">
+             class="w-full py-3 bg-brand-50 text-brand-700 rounded-xl font-bold text-sm hover:bg-brand-100 transition text-center">
             {{ "مدیریت" if current_user.is_authenticated else "ورود" }}
           </a>
         </div>
@@ -172,24 +172,24 @@
           <i class="fab fa-whatsapp text-lg"></i>
           خرید از واتساپ
         </a>
-        <p class="text-xs text-gray-400 text-center mt-3">یا با <a href="tel:+989160684552" class="text-indigo-600">تماس تلفنی</a> سریعتر اقدام کنید</p>
+        <p class="text-xs text-gray-400 text-center mt-3">یا با <a href="tel:+989160684552" class="text-brand-600">تماس تلفنی</a> سریعتر اقدام کنید</p>
       </div>
     </div>
 
     <!-- پلن نقره‌ای (پیشنهاد ویژه) -->
-    <div class="bg-white rounded-3xl shadow-xl border-2 border-indigo-500 hover:shadow-2xl transition-all duration-300 flex flex-col group relative scale-105 md:scale-100 z-10">
-      <div class="absolute top-0 right-0 bg-indigo-600 text-white px-4 py-1.5 rounded-bl-2xl rounded-tr-2xl text-sm font-bold shadow-md">
+    <div class="bg-white rounded-3xl shadow-xl border-2 border-brand-500 hover:shadow-2xl transition-all duration-300 flex flex-col group relative scale-105 md:scale-100 z-10">
+      <div class="absolute top-0 right-0 bg-brand-600 text-white px-4 py-1.5 rounded-bl-2xl rounded-tr-2xl text-sm font-bold shadow-md">
         <i class="fas fa-star ml-1"></i>محبوب‌ترین
       </div>
-      <div class="absolute top-4 left-4 bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full">
+      <div class="absolute top-4 left-4 bg-brand-100 text-brand-800 text-xs font-bold px-3 py-1 rounded-full">
         {{ silver_disc }}٪ تخفیف
       </div>
-      <div class="p-8 text-center bg-gradient-to-b from-indigo-50 to-white rounded-t-3xl">
-        <i class="fas fa-gem text-4xl text-indigo-600 mb-3"></i>
+      <div class="p-8 text-center bg-gradient-to-b from-brand-50 to-white rounded-t-3xl">
+        <i class="fas fa-gem text-4xl text-brand-600 mb-3"></i>
         <h3 class="text-2xl font-bold text-gray-800">نقره‌ای</h3>
         <div class="mt-3">
           <span class="text-gray-400 line-through text-lg">{{ toman(silver_year_full) }} تومان</span>
-          <span class="text-3xl font-black text-indigo-700">{{ toman(silver_year) }}</span>
+          <span class="text-3xl font-black text-brand-700">{{ toman(silver_year) }}</span>
           <span class="text-gray-600 text-sm block mt-1">تومان / سال</span>
         </div>
         <p class="text-sm text-gray-500 mt-2">معادل <strong>{{ toman(silver_month_eq) }} تومان</strong> در ماه</p>
@@ -197,19 +197,19 @@
       <div class="p-6 flex-grow">
         <ul class="space-y-4 text-gray-700">
           <li class="flex items-start gap-3">
-            <i class="fas fa-check-circle text-indigo-600 text-xl mt-0.5"></i>
+            <i class="fas fa-check-circle text-brand-600 text-xl mt-0.5"></i>
             <span><strong>کاربر نامحدود</strong> (تا ۵۰ کاربر پیشنهادی)</span>
           </li>
           <li class="flex items-start gap-3">
-            <i class="fas fa-check-circle text-indigo-600 text-xl mt-0.5"></i>
+            <i class="fas fa-check-circle text-brand-600 text-xl mt-0.5"></i>
             <span><strong>پروژه نامحدود</strong></span>
           </li>
           <li class="flex items-start gap-3">
-            <i class="fas fa-check-circle text-indigo-600 text-xl mt-0.5"></i>
+            <i class="fas fa-check-circle text-brand-600 text-xl mt-0.5"></i>
             <span><strong>قرارداد نامحدود</strong></span>
           </li>
           <li class="flex items-start gap-3">
-            <i class="fas fa-check-circle text-indigo-600 text-xl mt-0.5"></i>
+            <i class="fas fa-check-circle text-brand-600 text-xl mt-0.5"></i>
             <span>پشتیبانی پیشرفته (تیکت + واتساپ)</span>
           </li>
         </ul>
@@ -217,7 +217,7 @@
       <div class="p-6 pt-0 mt-auto">
         <a href="https://wa.me/989160684552?text=سلام، برای خرید اشتراک نقره‌ای Project Agent (سالیانه {{ silver_year }} تومان) راهنمایی می‌خواهم"
            target="_blank"
-           class="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-lg">
+           class="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-lg">
           <i class="fab fa-whatsapp text-lg"></i>
           خرید از واتساپ
         </a>
@@ -275,22 +275,22 @@
   <!-- ========== بخش اعتماد و تضمین ========== -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16">
     <div class="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-100">
-      <i class="fas fa-shield-alt text-3xl text-indigo-600 mb-2"></i>
+      <i class="fas fa-shield-alt text-3xl text-brand-600 mb-2"></i>
       <h4 class="font-bold text-gray-800">تضمین بازگشت وجه</h4>
       <p class="text-sm text-gray-500">تا ۷ روز در صورت نارضایتی</p>
     </div>
     <div class="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-100">
-      <i class="fas fa-headset text-3xl text-indigo-600 mb-2"></i>
+      <i class="fas fa-headset text-3xl text-brand-600 mb-2"></i>
       <h4 class="font-bold text-gray-800">پشتیبانی دائمی</h4>
       <p class="text-sm text-gray-500">حتی بعد از اتمام اشتراک</p>
     </div>
     <div class="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-100">
-      <i class="fas fa-cloud-upload-alt text-3xl text-indigo-600 mb-2"></i>
+      <i class="fas fa-cloud-upload-alt text-3xl text-brand-600 mb-2"></i>
       <h4 class="font-bold text-gray-800">آپدیت رایگان</h4>
       <p class="text-sm text-gray-500">همه به‌روزرسانی‌ها بدون هزینه</p>
     </div>
     <div class="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-100">
-      <i class="fas fa-lock text-3xl text-indigo-600 mb-2"></i>
+      <i class="fas fa-lock text-3xl text-brand-600 mb-2"></i>
       <h4 class="font-bold text-gray-800">امنیت سطح بالا</h4>
       <p class="text-sm text-gray-500">سرورهای ایزوله و بکاپ روزانه</p>
     </div>
@@ -298,9 +298,9 @@
 
   <!-- ========== مقایسه سریع ویژگی‌ها (جدول) ========== -->
   <div class="mt-16 bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
-    <div class="bg-indigo-600 text-white py-6 px-8">
+    <div class="bg-brand-600 text-white py-6 px-8">
       <h2 class="text-2xl font-bold">مقایسه پلن‌ها در یک نگاه</h2>
-      <p class="text-indigo-100">هر پلن را بر اساس نیاز تیم خود انتخاب کنید</p>
+      <p class="text-brand-100">هر پلن را بر اساس نیاز تیم خود انتخاب کنید</p>
     </div>
     <div class="p-6 overflow-x-auto">
       <table class="w-full text-right">
@@ -309,7 +309,7 @@
             <th class="py-4 px-3 font-bold text-gray-700">ویژگی</th>
             <th class="py-4 px-3 font-bold text-green-700">رایگان</th>
             <th class="py-4 px-3 font-bold text-orange-700">برنزی</th>
-            <th class="py-4 px-3 font-bold text-indigo-700">نقره‌ای</th>
+            <th class="py-4 px-3 font-bold text-brand-700">نقره‌ای</th>
             <th class="py-4 px-3 font-bold text-amber-700">طلایی</th>
           </tr>
         </thead>
@@ -359,19 +359,19 @@
     <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">سوالات متداول</h2>
     <div class="grid md:grid-cols-2 gap-6">
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h3 class="font-bold text-lg text-indigo-700 mb-2">آیا می‌توانم بعداً پلن خود را ارتقا دهم؟</h3>
+        <h3 class="font-bold text-lg text-brand-700 mb-2">آیا می‌توانم بعداً پلن خود را ارتقا دهم؟</h3>
         <p class="text-gray-600">بله، هر زمان که بخواهید می‌توانید به پلن بالاتر ارتقا دهید. هزینه پلن قبلی به صورت متناسب محاسبه و کسر می‌شود.</p>
       </div>
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h3 class="font-bold text-lg text-indigo-700 mb-2">چه روش‌های پرداختی دارید؟</h3>
+        <h3 class="font-bold text-lg text-brand-700 mb-2">چه روش‌های پرداختی دارید؟</h3>
         <p class="text-gray-600">در حال حاضر پرداخت از طریق واتساپ و هماهنگی با کارشناس فروش انجام می‌شود. به زودی درگاه آنلاین نیز اضافه خواهد شد.</p>
       </div>
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h3 class="font-bold text-lg text-indigo-700 mb-2">آیا پس از اتمام اشتراک، داده‌هایم حذف می‌شود؟</h3>
+        <h3 class="font-bold text-lg text-brand-700 mb-2">آیا پس از اتمام اشتراک، داده‌هایم حذف می‌شود؟</h3>
         <p class="text-gray-600">خیر، اطلاعات شما تا ۳ ماه باقی می‌ماند و پس از تمدید دوباره قابل دسترس است. در این مدت می‌توانید پلن خود را تمدید کنید.</p>
       </div>
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h3 class="font-bold text-lg text-indigo-700 mb-2">آیا پشتیبانی اختصاصی برای پلن نقره‌ای هم هست؟</h3>
+        <h3 class="font-bold text-lg text-brand-700 mb-2">آیا پشتیبانی اختصاصی برای پلن نقره‌ای هم هست؟</h3>
         <p class="text-gray-600">بله، تیم پشتیبانی ما در واتساپ و تیکت پاسخگوی شما هستند. پلن طلایی شامل مدیر حساب جداگانه است.</p>
       </div>
     </div>
@@ -392,17 +392,17 @@
   </div>
 
   <!-- ========== دعوت به اقدام نهایی ========== -->
-  <div class="mt-16 text-center bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-3xl py-12 px-6 text-white">
+  <div class="mt-16 text-center bg-gradient-to-r from-brand-600 to-brand-800 rounded-3xl py-12 px-6 text-white">
     <h2 class="text-3xl font-bold mb-3">همین حالا تیم خود را به Project Agent بیاورید</h2>
-    <p class="text-lg text-indigo-100 max-w-2xl mx-auto mb-8">
+    <p class="text-lg text-brand-100 max-w-2xl mx-auto mb-8">
       اگر بین پلن‌ها مردد هستید، با کارشناسان ما مشورت کنید. خوشحال می‌شویم شما را راهنمایی کنیم.
     </p>
     <div class="flex flex-wrap justify-center gap-4">
-      <a href="https://wa.me/989160684552" target="_blank" class="bg-white text-indigo-700 hover:bg-indigo-50 font-bold py-3 px-8 rounded-xl flex items-center gap-2 transition">
+      <a href="https://wa.me/989160684552" target="_blank" class="bg-white text-brand-700 hover:bg-brand-50 font-bold py-3 px-8 rounded-xl flex items-center gap-2 transition">
         <i class="fab fa-whatsapp text-xl"></i>
         مشاوره در واتساپ
       </a>
-      <a href="tel:+989160684552" class="bg-indigo-500 hover:bg-indigo-400 text-white font-bold py-3 px-8 rounded-xl flex items-center gap-2 transition">
+      <a href="tel:+989160684552" class="bg-brand-500 hover:bg-brand-400 text-white font-bold py-3 px-8 rounded-xl flex items-center gap-2 transition">
         <i class="fas fa-phone-alt text-xl"></i>
         تماس تلفنی
       </a>

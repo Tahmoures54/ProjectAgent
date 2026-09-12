@@ -25,6 +25,25 @@ def test_login_page_loads(client):
     assert response.status_code == 200
 
 
+def test_register_page_loads(client):
+    response = client.get("/register")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "ایجاد حساب" in html
+    assert "register-form" in html
+    assert "خطای داخلی سرور" not in html
+
+
+def test_register_page_loads_when_bootstrap_fails(client, monkeypatch):
+    def boom():
+        raise RuntimeError("roles unavailable")
+
+    monkeypatch.setattr("pms_app.blueprints.auth.routes._register_bootstrap", boom)
+    response = client.get("/register")
+    assert response.status_code == 200
+    assert "ایجاد حساب" in response.get_data(as_text=True)
+
+
 def test_forgot_password_page_loads(client):
     response = client.get("/forgot-password")
     assert response.status_code == 200

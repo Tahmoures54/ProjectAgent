@@ -1,4 +1,4 @@
-from flask import render_template, jsonify, request
+from flask import current_app, jsonify, render_template, request
 
 
 class ErrorHandler:
@@ -21,6 +21,7 @@ class ErrorHandler:
 
         @app.errorhandler(500)
         def server_error(e):
+            current_app.logger.exception("Unhandled server error on %s", request.path)
             if request.path.startswith("/api/"):
                 return jsonify({"error": "Internal server error"}), 500
             return render_template("errors/500.html"), 500

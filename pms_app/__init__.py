@@ -259,9 +259,8 @@ def _ensure_db_schema_and_seed(app: Flask, *, cfg: str) -> None:
     Bootstrap an empty database for local/dev.
 
     Schema changes on an existing database must go through Alembic.
-    Production never auto-creates unless PMS_AUTO_CREATE_DB=1, and even then
-    only an empty database is created — missing tables on a live DB are not
-    patched with create_all().
+    Production never auto-creates unless PMS_AUTO_CREATE_DB=1 — except on
+    Vercel, where an empty or incomplete Postgres must still boot signup.
     """
     if app.config.get("TESTING") is True:
         return
@@ -269,10 +268,13 @@ def _ensure_db_schema_and_seed(app: Flask, *, cfg: str) -> None:
     if app.config.get("SERVERLESS_DB_MISSING"):
         return
 
+    from pms_app.config.database import is_vercel
+
     auto_flag = (os.getenv("PMS_AUTO_CREATE_DB") or "").strip().lower()
     force_auto = auto_flag in {"1", "true", "yes", "on"}
+    on_vercel = is_vercel()
 
-    should_run = force_auto or (cfg != "production")
+    should_run = force_auto or (cfg != "production") or on_vercel
     if not should_run:
         return
 
@@ -292,6 +294,12 @@ def _ensure_db_schema_and_seed(app: Flask, *, cfg: str) -> None:
                 app.logger.warning(
                     "Database is empty (tables=%s). Running db.create_all() ...",
                     sorted(existing_tables),
+                )
+                db.create_all()
+            elif missing and (force_auto or on_vercel):
+                app.logger.warning(
+                    "Creating missing tables %s (serverless/auto bootstrap).",
+                    sorted(missing),
                 )
                 db.create_all()
             elif missing:

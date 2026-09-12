@@ -1,18 +1,16 @@
 {# Path: pms_app/templates/main/partials/_stats.html #}
-{# نوار قابلیت‌ها — بدون آمار ساختگی #}
 <section class="home-caps" aria-label="قابلیت‌های محصول">
-    <div class="home-caps-track" data-play-cards data-play-interval="2200">
+    <div class="home-caps-track">
         {% set caps = [
-            {'icon': 'fa-chart-pie', 'title': 'EVM', 'desc': 'CPI، SPI، EAC و S-Curve'},
-            {'icon': 'fa-sitemap', 'title': 'WBS / CBS', 'desc': 'شکست کار و هزینه'},
-            {'icon': 'fa-clipboard-list', 'title': 'گزارش روزانه', 'desc': 'تأیید قبل از اعمال پیشرفت'},
-            {'icon': 'fa-triangle-exclamation', 'title': 'کانسرن', 'desc': 'چهار سطح مشاهده'},
-            {'icon': 'fa-calendar-alt', 'title': 'جلالی', 'desc': 'تاریخ شمسی در فرم‌ها'},
-            {'icon': 'fa-building', 'title': 'چندشرکتی', 'desc': 'داده هر شرکت جدا'}
+            {'title': 'EVM', 'desc': 'CPI، SPI، EAC و S-Curve'},
+            {'title': 'WBS / CBS', 'desc': 'شکست کار و هزینه'},
+            {'title': 'گزارش روزانه', 'desc': 'تأیید قبل از اعمال پیشرفت'},
+            {'title': 'کانسرن', 'desc': 'چهار سطح مشاهده'},
+            {'title': 'جلالی', 'desc': 'تاریخ شمسی در فرم‌ها'},
+            {'title': 'چندشرکتی', 'desc': 'داده هر شرکت جدا'}
         ] %}
         {% for c in caps %}
-        <article class="home-cap-card{% if loop.first %} is-playing{% endif %}">
-            <i class="fas {{ c.icon }}" aria-hidden="true"></i>
+        <article class="home-cap-card">
             <h3>{{ c.title }}</h3>
             <p>{{ c.desc }}</p>
         </article>
