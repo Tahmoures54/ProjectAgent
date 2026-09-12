@@ -14,7 +14,15 @@ from pms_app.models.user import User
 from pms_app.utils.security import configured_owner_emails, ensure_rbac_seed, is_owner as is_owner_user
 
 from . import bp
-from .forms import ChangePasswordForm, ForgotPasswordForm, LoginForm, RegisterForm, ResetPasswordForm
+from .forms import (
+    ChangePasswordForm,
+    Disable2FAForm,
+    ForgotPasswordForm,
+    LoginForm,
+    OTPForm,
+    RegisterForm,
+    ResetPasswordForm,
+)
 from .helpers import sms_notifier, subscription
 from .helpers.captcha import clear_captcha, ensure_captcha, verify_captcha
 from .helpers.security import (
@@ -27,8 +35,13 @@ from .helpers.security import (
 from .helpers.tokens import generate_reset_token, send_reset_link, verify_reset_token
 from .helpers.two_factor import (
     build_provisioning_uri,
+    consume_backup_code,
+    format_secret_display,
+    generate_backup_codes,
     generate_totp_secret,
+    hash_backup_codes,
     make_qr_data_uri,
+    totp_available,
     verify_totp,
 )
 
@@ -37,16 +50,7 @@ try:
 except Exception:
     Company = None  # type: ignore
 
-try:
-    from .forms import OTPForm  # type: ignore
-except Exception:
-    from flask_wtf import FlaskForm
-    from wtforms import StringField, SubmitField
-    from wtforms.validators import DataRequired, Length
-
-    class OTPForm(FlaskForm):
-        otp_code = StringField("کد ۶ رقمی", validators=[DataRequired(), Length(min=6, max=6)])
-        submit = SubmitField("تأیید")
+MAX_OTP_ATTEMPTS = 8
 
 
 # =========================================================
@@ -122,6 +126,21 @@ def _finalize_login(user: User, *, remember: bool, next_url: str | None):
     return _post_login_redirect(user, next_url)
 
 
+def _clear_pre_2fa_session() -> None:
+    for key in ("pre_2fa_user_id", "pre_2fa_remember", "pre_2fa_next", "2fa_failures"):
+        session.pop(key, None)
+
+
+def _too_many_otp_attempts() -> bool:
+    return int(session.get("2fa_failures") or 0) >= MAX_OTP_ATTEMPTS
+
+
+def _record_otp_failure() -> int:
+    n = int(session.get("2fa_failures") or 0) + 1
+    session["2fa_failures"] = n
+    return n
+
+
 # =========================================================
 # Routes
 # =========================================================
@@ -136,16 +155,16 @@ def login():
         user = User.query.filter(func.lower(User.email) == email).first() if email else None
 
         if user and user.is_active and user.check_password(form.password.data):
-            # 2FA?
             if getattr(user, "two_fa_enabled", False) and getattr(user, "two_fa_secret", None):
                 session["pre_2fa_user_id"] = int(user.id)
                 session["pre_2fa_remember"] = bool(form.remember.data)
+                session["2fa_failures"] = 0
                 next_url = request.args.get("next")
                 if next_url and is_safe_redirect_url(next_url):
                     session["pre_2fa_next"] = next_url
                 else:
                     session.pop("pre_2fa_next", None)
-                flash("کد ۲ مرحله‌ای را وارد کنید.", "info")
+                flash("کد برنامه Authenticator را وارد کنید.", "info")
                 return redirect(url_for("auth.login_2fa"))
 
             return _finalize_login(user, remember=bool(form.remember.data), next_url=request.args.get("next"))
@@ -165,24 +184,44 @@ def login_2fa():
         flash("جلسه ورود منقضی شده است. دوباره وارد شوید.", "warning")
         return redirect(url_for("auth.login"))
 
+    if _too_many_otp_attempts():
+        _clear_pre_2fa_session()
+        flash("تعداد تلاش برای کد دو مرحله‌ای بیش از حد بود. دوباره وارد شوید.", "danger")
+        return redirect(url_for("auth.login"))
+
     user = db.session.get(User, int(user_id))
     if not user or not user.is_active or not user.two_fa_enabled or not user.two_fa_secret:
-        for key in ("pre_2fa_user_id", "pre_2fa_remember", "pre_2fa_next"):
-            session.pop(key, None)
+        _clear_pre_2fa_session()
         flash("ورود دو مرحله‌ای برای این حساب فعال نیست.", "warning")
         return redirect(url_for("auth.login"))
 
     form = OTPForm()
     if form.validate_on_submit():
-        code = normalize_otp(form.otp_code.data)
+        raw = form.otp_code.data or ""
+        code = normalize_otp(raw)
+        accepted = False
         if verify_totp(user.two_fa_secret, code):
+            accepted = True
+        else:
+            remaining = consume_backup_code(user.two_fa_backup_hashes, raw)
+            if remaining is not None:
+                user.two_fa_backup_hashes = remaining
+                db.session.commit()
+                accepted = True
+
+        if accepted:
             remember = bool(session.get("pre_2fa_remember"))
             next_url = session.get("pre_2fa_next")
-            for key in ("pre_2fa_user_id", "pre_2fa_remember", "pre_2fa_next"):
-                session.pop(key, None)
+            _clear_pre_2fa_session()
             return _finalize_login(user, remember=remember, next_url=next_url)
 
-        flash("کد ۲ مرحله‌ای نادرست است.", "danger")
+        n = _record_otp_failure()
+        left = MAX_OTP_ATTEMPTS - n
+        if left <= 0:
+            _clear_pre_2fa_session()
+            flash("تعداد تلاش برای کد دو مرحله‌ای بیش از حد بود. دوباره وارد شوید.", "danger")
+            return redirect(url_for("auth.login"))
+        flash("کد Authenticator یا کد پشتیبان نادرست است.", "danger")
 
     return render_template("auth/verify_2fa.html", form=form)
 
@@ -190,55 +229,88 @@ def login_2fa():
 @bp.route("/enable-2fa", methods=["GET", "POST"])
 @login_required
 def enable_2fa():
-    form = OTPForm()
-
     if current_user.two_fa_enabled and current_user.two_fa_secret:
         flash("احراز هویت دو مرحله‌ای از قبل فعال است.", "info")
+        return redirect(url_for("auth.change_password"))
 
+    if not totp_available():
+        flash("فعال‌سازی Authenticator روی این سرور در دسترس نیست.", "danger")
+        return redirect(url_for("auth.change_password"))
+
+    form = OTPForm()
     secret = session.get("2fa_secret") or generate_totp_secret()
     if not secret:
-        flash("برای فعال‌سازی 2FA باید pyotp نصب باشد.", "danger")
-        return redirect(url_for("main.dashboard"))
+        flash("ساخت کلید Authenticator ممکن نشد.", "danger")
+        return redirect(url_for("auth.change_password"))
     session["2fa_secret"] = secret
 
     issuer = current_app.config.get("APP_NAME", "Project Agent")
     account = current_user.email or f"user-{current_user.id}"
     uri = build_provisioning_uri(secret, account, issuer)
-
-    try:
-        qrcode_url = make_qr_data_uri(uri) if uri else None
-    except Exception:
-        qrcode_url = None
+    qrcode_url = make_qr_data_uri(uri) if uri else None
 
     if form.validate_on_submit():
         code = normalize_otp(form.otp_code.data)
         if not verify_totp(secret, code):
-            flash("کد وارد شده صحیح نیست.", "danger")
-            return render_template("auth/enable_2fa.html", form=form, qrcode_url=qrcode_url)
+            flash("کد ۶ رقمی برنامه Authenticator صحیح نیست.", "danger")
+            return render_template(
+                "auth/enable_2fa.html",
+                form=form,
+                qrcode_url=qrcode_url,
+                secret_display=format_secret_display(secret),
+                provisioning_uri=uri,
+            )
 
+        backup_codes = generate_backup_codes()
         current_user.two_fa_secret = secret
         current_user.two_fa_enabled = True
+        current_user.two_fa_backup_hashes = hash_backup_codes(backup_codes)
         db.session.commit()
         session.pop("2fa_secret", None)
-        flash("احراز هویت دو مرحله‌ای با موفقیت فعال شد.", "success")
-        return redirect(url_for("main.dashboard"))
+        session["2fa_backup_plain"] = backup_codes
+        flash("احراز هویت دو مرحله‌ای فعال شد. کدهای پشتیبان را در جای امن ذخیره کنید.", "success")
+        return redirect(url_for("auth.two_fa_backup_codes"))
 
-    return render_template("auth/enable_2fa.html", form=form, qrcode_url=qrcode_url)
+    return render_template(
+        "auth/enable_2fa.html",
+        form=form,
+        qrcode_url=qrcode_url,
+        secret_display=format_secret_display(secret),
+        provisioning_uri=uri,
+    )
+
+
+@bp.route("/enable-2fa/backup-codes")
+@login_required
+def two_fa_backup_codes():
+    codes = session.pop("2fa_backup_plain", None)
+    if not codes:
+        flash("کدهای پشتیبان فقط یک‌بار نمایش داده می‌شوند.", "info")
+        return redirect(url_for("auth.change_password"))
+    return render_template("auth/backup_codes.html", codes=codes)
 
 
 @bp.route("/disable-2fa", methods=["POST"])
 @login_required
 def disable_2fa():
+    form = Disable2FAForm(prefix="disable")
+    if not form.validate_on_submit() or not current_user.check_password(form.current_password.data):
+        flash("برای غیرفعال کردن Authenticator باید رمز فعلی را درست وارد کنید.", "danger")
+        return redirect(url_for("auth.change_password"))
+
     current_user.two_fa_enabled = False
     current_user.two_fa_secret = None
+    current_user.two_fa_backup_hashes = None
     db.session.commit()
+    session.pop("2fa_secret", None)
+    session.pop("2fa_backup_plain", None)
     flash("احراز هویت دو مرحله‌ای غیرفعال شد.", "info")
-    return redirect(url_for("main.dashboard"))
+    return redirect(url_for("auth.change_password"))
 
 
 @bp.route("/logout")
 def logout():
-    for key in ("pre_2fa_user_id", "pre_2fa_remember", "pre_2fa_next", "2fa_secret"):
+    for key in ("pre_2fa_user_id", "pre_2fa_remember", "pre_2fa_next", "2fa_secret", "2fa_failures", "2fa_backup_plain"):
         session.pop(key, None)
 
     if current_user.is_authenticated:
@@ -462,11 +534,19 @@ def change_password():
     if form.validate_on_submit():
         if not current_user.check_password(form.current_password.data):
             flash("رمز فعلی اشتباه است.", "danger")
-            return render_template("auth/change_password.html", form=form)
+            return render_template(
+                "auth/change_password.html",
+                form=form,
+                disable_2fa_form=Disable2FAForm(prefix="disable"),
+            )
 
         current_user.set_password(form.new_password.data)
         db.session.commit()
         flash("رمز عبور با موفقیت تغییر کرد.", "success")
         return redirect(url_for("main.dashboard"))
 
-    return render_template("auth/change_password.html", form=form)
+    return render_template(
+        "auth/change_password.html",
+        form=form,
+        disable_2fa_form=Disable2FAForm(prefix="disable"),
+    )

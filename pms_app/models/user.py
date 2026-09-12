@@ -66,9 +66,10 @@ class User(db.Model, UserMixin):
     last_login_ip = db.Column(db.String(64), nullable=True)
     last_login_user_agent = db.Column(db.String(255), nullable=True)
 
-    # 2FA
+    # 2FA (TOTP — Google Authenticator / Microsoft Authenticator)
     two_fa_enabled = db.Column(db.Boolean, nullable=False, default=False)
     two_fa_secret = db.Column(db.String(255), nullable=True)
+    two_fa_backup_hashes = db.Column(db.Text, nullable=True)
 
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)

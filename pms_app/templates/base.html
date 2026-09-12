@@ -84,6 +84,9 @@
               <a href="{{ url_for('auth.change_password') }}" class="dropdown-item-modern">
                 <i class="fa-solid fa-circle-user opacity-50 w-5"></i> پروفایل و رمز عبور
               </a>
+              <a href="{{ url_for('auth.enable_2fa' if not current_user.two_fa_enabled else 'auth.change_password') }}" class="dropdown-item-modern">
+                <i class="fa-solid fa-shield-halved opacity-50 w-5"></i> ورود دو مرحله‌ای
+              </a>
               {% if current_user.is_owner %}
                 <a href="{{ url_for('main.settings') }}" class="dropdown-item-modern">
                   <i class="fa-solid fa-cog opacity-50 w-5"></i> تنظیمات سیستم

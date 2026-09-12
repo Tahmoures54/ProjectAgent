@@ -308,12 +308,39 @@ def _ensure_db_schema_and_seed(app: Flask, *, cfg: str) -> None:
                     sorted(missing),
                 )
 
+            _ensure_users_2fa_columns(db)
             ensure_rbac_seed()
 
     except Exception:
         app.logger.exception("Failed to ensure DB schema / RBAC seed")
         if _is_debug(app):
             raise
+
+
+def _ensure_users_2fa_columns(db) -> None:
+    """Add TOTP columns on existing users tables (Vercel/local without Alembic)."""
+    from sqlalchemy import inspect as sa_inspect, text
+
+    inspector = sa_inspect(db.engine)
+    if "users" not in set(inspector.get_table_names()):
+        return
+    columns = {col["name"] for col in inspector.get_columns("users")}
+    dialect = db.engine.dialect.name
+    stmts = []
+    if "two_fa_enabled" not in columns:
+        if dialect == "sqlite":
+            stmts.append("ALTER TABLE users ADD COLUMN two_fa_enabled BOOLEAN DEFAULT 0 NOT NULL")
+        else:
+            stmts.append("ALTER TABLE users ADD COLUMN two_fa_enabled BOOLEAN NOT NULL DEFAULT FALSE")
+    if "two_fa_secret" not in columns:
+        stmts.append("ALTER TABLE users ADD COLUMN two_fa_secret VARCHAR(255)")
+    if "two_fa_backup_hashes" not in columns:
+        stmts.append("ALTER TABLE users ADD COLUMN two_fa_backup_hashes TEXT")
+    if not stmts:
+        return
+    with db.engine.begin() as conn:
+        for sql in stmts:
+            conn.execute(text(sql))
 
 
 def _register_blueprints(app: Flask) -> None:

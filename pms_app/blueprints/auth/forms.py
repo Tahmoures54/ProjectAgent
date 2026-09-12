@@ -74,6 +74,19 @@ class ResetPasswordForm(FlaskForm):
     submit = SubmitField("تغییر رمز")
 
 
+class OTPForm(FlaskForm):
+    otp_code = StringField(
+        "کد ۶ رقمی یا کد پشتیبان",
+        validators=[DataRequired(), Length(min=6, max=20)],
+    )
+    submit = SubmitField("تأیید")
+
+
+class Disable2FAForm(FlaskForm):
+    current_password = PasswordField("رمز فعلی", validators=[DataRequired()])
+    submit = SubmitField("غیرفعال کردن")
+
+
 class ChangePasswordForm(FlaskForm):
     current_password = PasswordField("رمز فعلی", validators=[DataRequired()])
     new_password = PasswordField("رمز جدید", validators=[DataRequired(), Length(min=8, max=128)])
