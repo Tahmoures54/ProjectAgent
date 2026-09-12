@@ -280,16 +280,35 @@ body.home-skin > footer {
 }
 
 .banner-pile {
+    --peek: 72px;
+    --strip: 80px;
     position: relative;
-    min-height: calc(var(--banner-h) + 80px);
+    min-height: calc(var(--banner-h) + (var(--peek) * 5));
 }
 
 .banner-pile:not(.is-expanded) .feature-banner {
     position: absolute;
     left: 0;
     right: 0;
-    top: calc(var(--i) * 16px);
+    top: calc(var(--i) * var(--peek));
+    height: var(--strip);
+    overflow: hidden;
+    align-items: center;
+    padding-block: 18px;
+}
+
+.banner-pile:not(.is-expanded) .feature-banner p {
+    display: none;
+}
+
+.banner-pile:not(.is-expanded) .feature-banner.is-front {
     height: var(--banner-h);
+    align-items: start;
+    padding: 32px 36px;
+}
+
+.banner-pile:not(.is-expanded) .feature-banner.is-front p {
+    display: block;
 }
 
 .feature-banner {
@@ -359,10 +378,8 @@ body.home-skin > footer {
         padding: 24px 20px;
     }
 
-    .banner-pile:not(.is-expanded) .feature-banner,
-    .banner-pile {
-        height: auto;
-        min-height: 220px;
+    .banner-pile:not(.is-expanded) {
+        min-height: calc(var(--banner-h) + (var(--peek) * 5));
     }
 }
 
@@ -601,7 +618,8 @@ body.home-skin > footer {
 }
 
 .price-card__features li {
-    padding: 7px 0 7px 22px;
+    padding-block: 7px;
+    padding-inline-start: 22px;
     position: relative;
     color: var(--ink);
 }

@@ -66,10 +66,13 @@
         }
         banners.forEach(function (banner, i) {
             window.setTimeout(function () {
-                banner.classList.add("is-dealt");
-            }, i * 280);
+                banners.forEach(function (other) {
+                    other.classList.remove("is-front");
+                });
+                banner.classList.add("is-dealt", "is-front");
+            }, i * 320);
         });
-        window.setTimeout(expandPile, banners.length * 280 + 700);
+        window.setTimeout(expandPile, banners.length * 320 + 800);
     };
 
     if (pile && banners.length) {
