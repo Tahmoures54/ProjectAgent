@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}کدهای پشتیبان Authenticator | Project Agent{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-brand-50 via-white to-brand-50/50 flex items-center justify-center px-4 py-10" dir="rtl">
+  <div class="w-full max-w-lg bg-white shadow-xl rounded-2xl p-6 md:p-8 border border-brand-100">
+    <h1 class="text-2xl font-extrabold text-slate-800 mb-2">کدهای پشتیبان را ذخیره کنید</h1>
+    <p class="text-sm text-slate-500 leading-relaxed mb-6">
+      اگر گوشی یا برنامه Authenticator در دسترس نباشد، با یکی از این کدها وارد می‌شوید. هر کد فقط یک‌بار کار می‌کند و این صفحه دیگر تکرار نمی‌شود.
+    </p>
+    <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6" id="backup-list">
+      {% for code in codes %}
+        <li class="font-mono text-center tracking-widest bg-slate-50 border border-slate-200 rounded-xl py-3 text-brand-800 font-bold">{{ code }}</li>
+      {% endfor %}
+    </ul>
+    <button type="button" id="copy-all" class="w-full mb-3 py-3 rounded-xl border border-brand-200 text-brand-700 font-bold hover:bg-brand-50">کپی همه کدها</button>
+    <a href="{{ url_for('main.dashboard') }}" class="block w-full py-3 text-center bg-gradient-to-r from-brand-600 to-teal-500 text-white font-bold rounded-xl">متوجه شدم؛ ادامه به داشبورد</a>
+  </div>
+</div>
+<script>
+document.getElementById('copy-all')?.addEventListener('click', async () => {
+  const codes = Array.from(document.querySelectorAll('#backup-list li')).map((el) => el.textContent.trim()).join('\n');
+  try {
+    await navigator.clipboard.writeText(codes);
+    document.getElementById('copy-all').textContent = 'کپی شد';
+  } catch (err) {}
+});
+</script>
+{% endblock %}
