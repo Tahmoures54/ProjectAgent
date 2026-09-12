@@ -5,11 +5,11 @@
     <div class="container">
         <div class="final-cta__box">
             <span class="section-head__eyebrow">شروع</span>
-            <h2 id="final-cta-title">با داده پروژه خودتان وارد شوید</h2>
-            <p>دوره رایگان {{ days_label }} روزه است. کارت بانکی برای ثبت‌نام لازم نیست. بعد از ورود، پروژه و گزارش واقعی خودتان را می‌سازید.</p>
+            <h2 id="final-cta-title">با داده پروژه خودتان کنترل را شروع کنید</h2>
+            <p>دوره رایگان {{ days_label }} روزه است. کارت بانکی برای ثبت‌نام لازم نیست.</p>
 
             {% if not current_user.is_authenticated %}
-                <div class="hero__cta" style="justify-content:center;margin-bottom:0">
+                <div class="hero__cta">
                     <a href="{{ url_for('auth.register') }}" class="btn btn--primary btn--lg">ثبت‌نام رایگان</a>
                     <a href="{{ url_for('billing.pricing') }}" class="btn btn--ghost btn--lg">مشاهده پلن‌ها</a>
                 </div>

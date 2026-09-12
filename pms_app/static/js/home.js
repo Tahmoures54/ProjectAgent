@@ -27,7 +27,7 @@
                     counterObserver.unobserve(el);
                     return;
                 }
-                var duration = 1600;
+                var duration = 1400;
                 var start = performance.now();
                 var tick = function (now) {
                     var p = Math.min((now - start) / duration, 1);
@@ -45,28 +45,48 @@
         });
     }
 
-    var revealTargets = document.querySelectorAll(
-        ".bento__item, .stat-card, .price-card, .audience-card, .step-card, .proof-card"
-    );
-    if (reduceMotion) {
-        revealTargets.forEach(function (el) {
-            el.classList.add("is-visible");
+    var stage = document.querySelector("[data-banner-stage]");
+    var pile = document.querySelector("[data-banner-pile]");
+    var banners = pile ? pile.querySelectorAll("[data-banner]") : [];
+
+    var expandPile = function () {
+        if (!pile) return;
+        pile.classList.add("is-expanded");
+        banners.forEach(function (banner) {
+            banner.classList.add("is-dealt");
         });
-    } else if ("IntersectionObserver" in window) {
-        revealTargets.forEach(function (el) {
-            el.classList.add("reveal");
+    };
+
+    var playBanners = function () {
+        if (!pile || pile.dataset.played === "1") return;
+        pile.dataset.played = "1";
+        if (reduceMotion) {
+            expandPile();
+            return;
+        }
+        banners.forEach(function (banner, i) {
+            window.setTimeout(function () {
+                banner.classList.add("is-dealt");
+            }, i * 280);
         });
-        var revealObserver = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add("is-visible");
-                    revealObserver.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.05, rootMargin: "0px 0px 15% 0px" });
-        revealTargets.forEach(function (el) {
-            revealObserver.observe(el);
-        });
+        window.setTimeout(expandPile, banners.length * 280 + 700);
+    };
+
+    if (pile && banners.length) {
+        if (reduceMotion) {
+            expandPile();
+        } else if ("IntersectionObserver" in window) {
+            var bannerObserver = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (!entry.isIntersecting) return;
+                    playBanners();
+                    bannerObserver.disconnect();
+                });
+            }, { threshold: 0.25 });
+            bannerObserver.observe(stage || pile);
+        } else {
+            expandPile();
+        }
     }
 
     var tabs = document.querySelectorAll(".showcase__tab");
@@ -84,49 +104,6 @@
             });
         });
     });
-
-    var showcaseIdx = 0;
-    var showcaseTimer;
-    var showcaseRoot = document.querySelector(".showcase");
-    var startAutoRotate = function () {
-        if (!tabs.length || reduceMotion) return;
-        showcaseTimer = window.setInterval(function () {
-            showcaseIdx = (showcaseIdx + 1) % tabs.length;
-            tabs[showcaseIdx].click();
-        }, 5000);
-    };
-    if (showcaseRoot && tabs.length) {
-        startAutoRotate();
-        showcaseRoot.addEventListener("mouseenter", function () {
-            window.clearInterval(showcaseTimer);
-        });
-        showcaseRoot.addEventListener("mouseleave", startAutoRotate);
-        showcaseRoot.addEventListener("focusin", function () {
-            window.clearInterval(showcaseTimer);
-        });
-        showcaseRoot.addEventListener("focusout", startAutoRotate);
-    }
-
-    var tiltEl = document.querySelector("[data-tilt]");
-    if (
-        tiltEl &&
-        window.matchMedia("(min-width: 960px)").matches &&
-        !reduceMotion
-    ) {
-        var mockup = tiltEl.querySelector(".hero__mockup");
-        if (mockup) {
-            tiltEl.addEventListener("mousemove", function (e) {
-                var rect = tiltEl.getBoundingClientRect();
-                var x = (e.clientX - rect.left) / rect.width - 0.5;
-                var y = (e.clientY - rect.top) / rect.height - 0.5;
-                mockup.style.transform =
-                    "rotate(" + (-2 + x * 4) + "deg) rotateY(" + x * 6 + "deg) rotateX(" + -y * 6 + "deg)";
-            });
-            tiltEl.addEventListener("mouseleave", function () {
-                mockup.style.transform = "";
-            });
-        }
-    }
 
     document.querySelectorAll('a[href^="#"]').forEach(function (a) {
         a.addEventListener("click", function (e) {
