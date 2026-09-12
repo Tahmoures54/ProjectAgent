@@ -14,6 +14,8 @@ def test_homepage_is_public_and_has_real_ctas(client, app):
     assert "کانسرن" in html
     assert "home-modules" in html
     assert "home-skin" in html
+    assert "hero" in html
+    assert "bento" in html
     assert "/pricing" in html
     assert "data-play-cards" not in html
     assert "home-marquee" not in html
@@ -33,9 +35,19 @@ def test_homepage_has_no_fake_metrics_or_quotes(client):
         "شرکت آبان",
         "هلدینگ پارس",
         "بیش از ۵۰۰ تیم",
+        "aggregateRating",
+        "ratingCount",
+        "۴.۸",
+        "4.8",
+        "۴۵K",
+        "45K",
+        "99.9",
+        "نسخه ۲.۰",
+        "۳,۹۰۰,۰۰۰",
+        "۳٫۹۰۰٫۰۰۰",
     )
     for snippet in forbidden:
-        assert snippet not in html
+        assert snippet not in html, snippet
 
 
 def test_homepage_uses_configured_free_days(client, app):

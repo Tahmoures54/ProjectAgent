@@ -1,0 +1,11 @@
+{# Path: pms_app/templates/main/partials/_logos.html #}
+<section class="logos" aria-label="ماژول‌های محصول">
+    <div class="container">
+        <p class="logos__title">ماژول‌هایی که دفتر فنی واقعاً استفاده می‌کند</p>
+        <div class="logos__grid">
+            {% for name in ['EVM', 'WBS / CBS', 'گزارش روزانه', 'کانسرن', 'جلالی', 'چندشرکتی'] %}
+            <div class="logos__item">{{ name }}</div>
+            {% endfor %}
+        </div>
+    </div>
+</section>

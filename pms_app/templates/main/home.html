@@ -1,16 +1,19 @@
 {# Path: pms_app/templates/main/home.html #}
 {% extends "base.html" %}
 
-{% block title %}Project Agent | کنترل پروژه با EVM، CBS، گزارش روزانه و کانسرن{% endblock %}
+{% block title %}Project Agent | پلتفرم کنترل پروژه با EVM، CBS و گزارش روزانه{% endblock %}
 
 {% block meta %}
-    <meta name="description" content="Project Agent سامانه کنترل پروژه برای پیمانکاران و مشاوران: WBS، CBS، Earned Value، گزارش روزانه کارگاه با تأیید مدیر، کانسرن با کنترل دسترسی، تاریخ جلالی و جداسازی داده شرکت‌ها.">
-    <meta name="keywords" content="کنترل پروژه, EVM, CBS, WBS, گزارش روزانه, کانسرن, صورت وضعیت, مدیریت قرارداد, Project Agent, جلالی">
+    <meta name="description" content="Project Agent پلتفرم بومی کنترل پروژه برای پیمانکاران و مشاوران: EVM، WBS، CBS، گزارش روزانه تأییدمحور، کانسرن با کنترل دسترسی، تقویم جلالی و جداسازی داده شرکت‌ها.">
+    <meta name="keywords" content="کنترل پروژه, EVM, CBS, WBS, گزارش روزانه کارگاه, کانسرن مهندسی, صورت وضعیت, مدیریت قرارداد, Project Agent, نرم افزار کنترل پروژه فارسی, تقویم جلالی">
     <meta name="author" content="Project Agent">
     <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563EB">
+    <link rel="canonical" href="{{ request.url }}">
 
-    <meta property="og:title" content="Project Agent | کنترل پروژه با EVM و گزارش روزانه">
-    <meta property="og:description" content="EVM، CBS، گزارش روزانه تأیید‌محور و کانسرن با سطح دسترسی — پلتفرم بومی برای تیم‌های مهندسی و پیمانکاری.">
+    <meta property="og:site_name" content="Project Agent">
+    <meta property="og:title" content="Project Agent | پلتفرم کنترل پروژه">
+    <meta property="og:description" content="EVM، CBS، گزارش روزانه تأییدمحور و کانسرن با سطح دسترسی — پلتفرم بومی برای تیم‌های مهندسی و پیمانکاری.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.url }}">
     <meta property="og:locale" content="fa_IR">
@@ -18,6 +21,23 @@
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Project Agent | سامانه کنترل پروژه">
     <meta name="twitter:description" content="کنترل یکپارچه پروژه با EVM، گزارش روزانه و جداسازی داده شرکت‌ها.">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Project Agent",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "description": "پلتفرم بومی کنترل پروژه با EVM، CBS، گزارش روزانه تأییدمحور و کانسرن.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "IRR",
+        "description": "دوره آزمایشی رایگان"
+      }
+    }
+    </script>
 {% endblock %}
 
 {% block body_extra %}home-skin{% endblock %}
@@ -27,12 +47,16 @@
 {% endblock %}
 
 {% block content %}
-<div class="home-page">
+<div class="home-page" id="main-content">
     {% include 'main/partials/_hero.html' %}
+    {% include 'main/partials/_logos.html' %}
     {% include 'main/partials/_stats.html' %}
+    {% include 'main/partials/_features.html' %}
     {% include 'main/partials/_benefits.html' %}
     {% include 'main/partials/_how_it_works.html' %}
+    {% include 'main/partials/_showcase.html' %}
     {% include 'main/partials/_testimonials.html' %}
+    {% include 'main/partials/_pricing.html' %}
     {% include 'main/partials/_faq.html' %}
     {% include 'main/partials/_final_cta.html' %}
 </div>

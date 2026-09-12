@@ -1,17 +1,21 @@
 {# Path: pms_app/templates/main/partials/_final_cta.html #}
 {% set days = free_days|default(90) %}
 {% set days_label = free_days_fa|default(days) %}
-<section class="home-cta" aria-label="شروع">
-    <p class="home-kicker home-kicker-on-dark">شروع</p>
-    <h2>با داده پروژه خودتان وارد شوید</h2>
-    <p>دوره رایگان {{ days_label }} روزه است. کارت بانکی برای ثبت‌نام لازم نیست. بعد از ورود، پروژه و گزارش واقعی خودتان را می‌سازید.</p>
+<section class="final-cta" aria-labelledby="final-cta-title">
+    <div class="container">
+        <div class="final-cta__box">
+            <span class="section-head__eyebrow">شروع</span>
+            <h2 id="final-cta-title">با داده پروژه خودتان وارد شوید</h2>
+            <p>دوره رایگان {{ days_label }} روزه است. کارت بانکی برای ثبت‌نام لازم نیست. بعد از ورود، پروژه و گزارش واقعی خودتان را می‌سازید.</p>
 
-    {% if not current_user.is_authenticated %}
-        <div class="home-cta-row home-cta-row-center">
-            <a href="{{ url_for('auth.register') }}" class="home-btn home-btn-light">ثبت‌نام رایگان</a>
-            <a href="{{ url_for('billing.pricing') }}" class="home-btn home-btn-ghost-light">مشاهده پلن‌ها</a>
+            {% if not current_user.is_authenticated %}
+                <div class="hero__cta" style="justify-content:center;margin-bottom:0">
+                    <a href="{{ url_for('auth.register') }}" class="btn btn--primary btn--lg">ثبت‌نام رایگان</a>
+                    <a href="{{ url_for('billing.pricing') }}" class="btn btn--ghost btn--lg">مشاهده پلن‌ها</a>
+                </div>
+            {% else %}
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn--primary btn--lg">ورود به داشبورد</a>
+            {% endif %}
         </div>
-    {% else %}
-        <a href="{{ url_for('main.dashboard') }}" class="home-btn home-btn-light">ورود به داشبورد</a>
-    {% endif %}
+    </div>
 </section>

@@ -1,19 +1,25 @@
 {# Path: pms_app/templates/main/partials/_stats.html #}
-<section class="home-caps" aria-label="قابلیت‌های محصول">
-    <div class="home-caps-track">
-        {% set caps = [
-            {'title': 'EVM', 'desc': 'CPI، SPI، EAC و S-Curve'},
-            {'title': 'WBS / CBS', 'desc': 'شکست کار و هزینه'},
-            {'title': 'گزارش روزانه', 'desc': 'تأیید قبل از اعمال پیشرفت'},
-            {'title': 'کانسرن', 'desc': 'چهار سطح مشاهده'},
-            {'title': 'جلالی', 'desc': 'تاریخ شمسی در فرم‌ها'},
-            {'title': 'چندشرکتی', 'desc': 'داده هر شرکت جدا'}
-        ] %}
-        {% for c in caps %}
-        <article class="home-cap-card">
-            <h3>{{ c.title }}</h3>
-            <p>{{ c.desc }}</p>
-        </article>
-        {% endfor %}
+{% set days = free_days|default(90) %}
+{% set days_label = free_days_fa|default(days) %}
+<section class="stats" aria-label="مشخصات محصول">
+    <div class="container">
+        <div class="stats__grid">
+            <div class="stat-card" data-counter data-target="{{ days }}">
+                <div class="stat-card__value"><span class="counter">0</span></div>
+                <div class="stat-card__label">روز آزمایش رایگان</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card__value">EVM</div>
+                <div class="stat-card__label">CPI، SPI، EAC و S-Curve</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card__value">۴</div>
+                <div class="stat-card__label">سطح مشاهده کانسرن</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card__value">CBS</div>
+                <div class="stat-card__label">قرارداد، آیتم و ورود اکسل</div>
+            </div>
+        </div>
     </div>
 </section>

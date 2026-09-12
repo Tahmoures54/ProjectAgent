@@ -1,0 +1,59 @@
+{# Path: pms_app/templates/main/partials/_showcase.html #}
+<section class="showcase" id="showcase" aria-labelledby="showcase-title">
+    <div class="container">
+        <header class="section-head">
+            <span class="section-head__eyebrow">نمای محصول</span>
+            <h2 id="showcase-title" class="section-head__title">داشبوردی که تصمیم‌گیری را ساده می‌کند</h2>
+            <p class="section-head__desc">نمونه رابط چهار ماژول اصلی — عدد زنده از پروژه خودتان بعد از ورود ساخته می‌شود.</p>
+        </header>
+
+        <div class="showcase__tabs" role="tablist">
+            <button class="showcase__tab is-active" type="button" role="tab" data-target="dash-evm" aria-selected="true">داشبورد EVM</button>
+            <button class="showcase__tab" type="button" role="tab" data-target="dash-daily" aria-selected="false">گزارش روزانه</button>
+            <button class="showcase__tab" type="button" role="tab" data-target="dash-concern" aria-selected="false">کانسرن</button>
+            <button class="showcase__tab" type="button" role="tab" data-target="dash-cbs" aria-selected="false">CBS</button>
+        </div>
+
+        <div class="showcase__panels">
+            <div class="showcase__panel is-active" id="dash-evm" role="tabpanel">
+                <div class="shot shot--evm">
+                    <div class="shot__row">
+                        <span>SPI <b>۱.۰۸</b></span>
+                        <span>CPI <b>۱.۱۲</b></span>
+                        <span>PV / EV / AC</span>
+                    </div>
+                    <svg viewBox="0 0 640 220" preserveAspectRatio="none" aria-hidden="true">
+                        <path d="M20,180 C120,160 180,90 280,110 C380,130 460,50 620,40" fill="none" stroke="#2563EB" stroke-width="4"/>
+                        <path d="M20,190 C140,175 220,130 320,140 C420,150 520,90 620,80" fill="none" stroke="#A855F7" stroke-width="4" stroke-dasharray="8 7"/>
+                    </svg>
+                    <p>S-Curve از داده همان قرارداد</p>
+                </div>
+            </div>
+            <div class="showcase__panel" id="dash-daily" role="tabpanel">
+                <div class="shot">
+                    <div class="shot-line"><b>۱۴۰۴/۰۶/۲۱</b> پروژه ونک <em class="tag tag--wait">در انتظار تأیید</em></div>
+                    <div class="shot-line"><b>۱۴۰۴/۰۶/۲۰</b> پروژه ونک <em class="tag tag--ok">تأیید شد</em></div>
+                    <div class="shot-line"><b>۱۴۰۴/۰۶/۱۹</b> پروژه کهریزک <em class="tag tag--ok">تأیید شد</em></div>
+                    <p>پیشرفت فقط بعد از تأیید مدیر اعمال می‌شود</p>
+                </div>
+            </div>
+            <div class="showcase__panel" id="dash-concern" role="tabpanel">
+                <div class="shot">
+                    <div class="shot-line"><b>فنی</b> تداخل مسیر لوله <em>مدیران پروژه</em></div>
+                    <div class="shot-line"><b>ایمنی</b> داربست ضلع غربی <em>اعضای پروژه</em></div>
+                    <div class="shot-line"><b>قرارداد</b> تأخیر مصالح <em>خصوصی</em></div>
+                    <p>چهار سطح مشاهده؛ بدون نشتی بین شرکت‌ها</p>
+                </div>
+            </div>
+            <div class="showcase__panel" id="dash-cbs" role="tabpanel">
+                <div class="shot shot--tree">
+                    <div class="tree-line">قرارداد اصلی</div>
+                    <div class="tree-line is-child">فصل ابنیه</div>
+                    <div class="tree-line is-grand">آیتم بتن‌ریزی — ورود از اکسل</div>
+                    <div class="tree-line is-child">فصل تأسیسات</div>
+                    <p>WBS و CBS روی همان ساختار صورت‌وضعیت</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

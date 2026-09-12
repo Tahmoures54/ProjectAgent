@@ -1,23 +1,25 @@
 {# Path: pms_app/templates/main/partials/_testimonials.html #}
-<section class="home-section" aria-label="برای چه کسانی">
-    <header class="home-section-head">
-        <p class="home-kicker">نقش‌ها</p>
-        <h2>برای نقشی که همین امروز در پروژه دارید</h2>
-        <p>این‌ها نقش‌های پشتیبانی‌شده در سامانه هستند؛ نقل‌قول ساختگی از مشتری نمایش داده نمی‌شود.</p>
-    </header>
+<section class="audience" aria-labelledby="audience-title">
+    <div class="container">
+        <header class="section-head">
+            <span class="section-head__eyebrow">نقش‌ها</span>
+            <h2 id="audience-title" class="section-head__title">برای نقشی که همین امروز در پروژه دارید</h2>
+            <p class="section-head__desc">این‌ها نقش‌های پشتیبانی‌شده در سامانه هستند؛ نقل‌قول ساختگی از مشتری نمایش داده نمی‌شود.</p>
+        </header>
 
-    <div class="home-audience">
-        {% set roles = [
-            {'title': 'دفتر فنی / کنترل پروژه', 'desc': 'CBS، صورت‌وضعیت، EVM و انحراف زمان و هزینه روی داده همان قرارداد.'},
-            {'title': 'مدیر پروژه', 'desc': 'تأیید گزارش روزانه، کانسرن مدیران، و دید تجمیعی پروژه بدون داده شرکت دیگر.'},
-            {'title': 'پیمانکار کارگاه', 'desc': 'ثبت گزارش روزانه و کانسرن اجرایی؛ پیشرفت تا تأیید مدیر اعمال نمی‌شود.'},
-            {'title': 'ادمین شرکت', 'desc': 'کاربران، پروژه‌ها و دسترسی‌ها فقط در محدوده همان شرکت.'}
-        ] %}
-        {% for r in roles %}
-        <article class="home-audience-card">
-            <h3>{{ r.title }}</h3>
-            <p>{{ r.desc }}</p>
-        </article>
-        {% endfor %}
+        <div class="audience__grid">
+            {% set roles = [
+                {'title': 'دفتر فنی / کنترل پروژه', 'desc': 'CBS، صورت‌وضعیت، EVM و انحراف زمان و هزینه روی داده همان قرارداد.'},
+                {'title': 'مدیر پروژه', 'desc': 'تأیید گزارش روزانه، کانسرن مدیران، و دید تجمیعی پروژه بدون داده شرکت دیگر.'},
+                {'title': 'پیمانکار کارگاه', 'desc': 'ثبت گزارش روزانه و کانسرن اجرایی؛ پیشرفت تا تأیید مدیر اعمال نمی‌شود.'},
+                {'title': 'ادمین شرکت', 'desc': 'کاربران، پروژه‌ها و دسترسی‌ها فقط در محدوده همان شرکت.'}
+            ] %}
+            {% for r in roles %}
+            <article class="audience-card">
+                <h3>{{ r.title }}</h3>
+                <p>{{ r.desc }}</p>
+            </article>
+            {% endfor %}
+        </div>
     </div>
 </section>

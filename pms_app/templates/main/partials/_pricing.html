@@ -1,0 +1,56 @@
+{# Path: pms_app/templates/main/partials/_pricing.html #}
+{% set days = free_days|default(90) %}
+{% set days_label = free_days_fa|default(days) %}
+{% set silver_year = 19008000 %}
+{% set silver_month = (silver_year / 12) | int %}
+<section class="pricing" id="pricing" aria-labelledby="pricing-title">
+    <div class="container">
+        <header class="section-head">
+            <span class="section-head__eyebrow">قیمت‌گذاری</span>
+            <h2 id="pricing-title" class="section-head__title">پلن مناسب تیم خود را انتخاب کنید</h2>
+            <p class="section-head__desc">اشتراک سالیانه، بدون هزینه پنهان. جزئیات روی صفحه پلن‌ها.</p>
+        </header>
+
+        <div class="pricing__grid">
+            <article class="price-card">
+                <h3 class="price-card__name">شروع</h3>
+                <p class="price-card__desc">برای پایلوت دفتر فنی</p>
+                <div class="price-card__price"><span>{{ days_label }} روز</span><small>رایگان</small></div>
+                <ul class="price-card__features">
+                    <li>۲ کاربر</li>
+                    <li>۱ پروژه فعال</li>
+                    <li>گزارش روزانه با تأیید</li>
+                    <li>بدون کارت بانکی</li>
+                </ul>
+                <a href="{{ url_for('auth.register') }}" class="btn btn--ghost btn--block">شروع رایگان</a>
+            </article>
+
+            <article class="price-card price-card--featured">
+                <div class="price-card__badge">پرطرفدار</div>
+                <h3 class="price-card__name">نقره‌ای</h3>
+                <p class="price-card__desc">برای پیمانکاران و مشاوران</p>
+                <div class="price-card__price"><span>{{ "{:,}".format(silver_year) }}</span><small>تومان / سال</small></div>
+                <ul class="price-card__features">
+                    <li>معادل {{ "{:,}".format(silver_month) }} تومان در ماه</li>
+                    <li>EVM، CBS، کانسرن کامل</li>
+                    <li>پروژه‌ها و قرارداد بیشتر</li>
+                    <li>پشتیبانی اولویت‌دار</li>
+                </ul>
+                <a href="{{ url_for('billing.pricing') }}" class="btn btn--primary btn--block">مشاهده پلن‌ها</a>
+            </article>
+
+            <article class="price-card">
+                <h3 class="price-card__name">طلایی / سازمانی</h3>
+                <p class="price-card__desc">برای تیم‌های بزرگ‌تر</p>
+                <div class="price-card__price"><span>تماس بگیرید</span></div>
+                <ul class="price-card__features">
+                    <li>سقف بالاتر پروژه و قرارداد</li>
+                    <li>همه ماژول‌های کنترل پروژه</li>
+                    <li>پشتیبانی مستقیم</li>
+                    <li>جزئیات روی صفحه تعرفه</li>
+                </ul>
+                <a href="{{ url_for('billing.pricing') }}" class="btn btn--ghost btn--block">تماس با فروش</a>
+            </article>
+        </div>
+    </div>
+</section>

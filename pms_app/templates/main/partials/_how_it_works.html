@@ -1,25 +1,27 @@
 {# Path: pms_app/templates/main/partials/_how_it_works.html #}
-<section class="home-section home-section-alt" aria-label="شروع کار">
-    <header class="home-section-head">
-        <p class="home-kicker">مسیر واقعی</p>
-        <h2>از ثبت‌نام تا کنترل — پنج گام</h2>
-        <p>هیچ نصب دسکتاپی لازم نیست. مسیر زیر همان چیزی است که در محصول وجود دارد.</p>
-    </header>
+<section class="steps" aria-labelledby="steps-title">
+    <div class="container">
+        <header class="section-head">
+            <span class="section-head__eyebrow">مسیر واقعی</span>
+            <h2 id="steps-title" class="section-head__title">از ثبت‌نام تا کنترل</h2>
+            <p class="section-head__desc">هیچ نصب دسکتاپی لازم نیست. مسیر زیر همان چیزی است که در محصول وجود دارد.</p>
+        </header>
 
-    <ol class="home-steps">
-        {% set steps = [
-            {'title': 'ثبت‌نام و شرکت', 'desc': 'حساب بسازید و شرکت خود را تعریف کنید.'},
-            {'title': 'پروژه و تیم', 'desc': 'پروژه بسازید و پیمانکار یا ناظر را دعوت کنید.'},
-            {'title': 'قرارداد و CBS', 'desc': 'آیتم‌ها را دستی یا از اکسل وارد کنید.'},
-            {'title': 'گزارش روزانه', 'desc': 'کارگاه ثبت کند؛ مدیر تأیید کند.'},
-            {'title': 'EVM و کانسرن', 'desc': 'شاخص‌ها را ببینید و دغدغه‌ها را با دسترسی درست پیگیری کنید.'}
-        ] %}
-        {% for s in steps %}
-        <li class="home-step">
-            <span class="home-step-num">{{ loop.index }}</span>
-            <h3>{{ s.title }}</h3>
-            <p>{{ s.desc }}</p>
-        </li>
-        {% endfor %}
-    </ol>
+        <ol class="steps__grid">
+            {% set steps = [
+                {'title': 'ثبت‌نام و شرکت', 'desc': 'حساب بسازید و شرکت خود را تعریف کنید.'},
+                {'title': 'پروژه و تیم', 'desc': 'پروژه بسازید و پیمانکار یا ناظر را دعوت کنید.'},
+                {'title': 'قرارداد و CBS', 'desc': 'آیتم‌ها را دستی یا از اکسل وارد کنید.'},
+                {'title': 'گزارش روزانه', 'desc': 'کارگاه ثبت کند؛ مدیر تأیید کند.'},
+                {'title': 'EVM و کانسرن', 'desc': 'شاخص‌ها را ببینید و دغدغه‌ها را با دسترسی درست پیگیری کنید.'}
+            ] %}
+            {% for s in steps %}
+            <li class="step-card">
+                <span class="step-card__num">{{ loop.index }}</span>
+                <h3>{{ s.title }}</h3>
+                <p>{{ s.desc }}</p>
+            </li>
+            {% endfor %}
+        </ol>
+    </div>
 </section>
