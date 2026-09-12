@@ -96,7 +96,12 @@ def _get_user_plan(user) -> str:
 
 @bp.route("/")
 def home():
-    return render_template("main/home.html")
+    raw = current_app.config.get("FREE_DAYS") or os.getenv("FREE_DAYS", "90")
+    try:
+        free_days = max(int(raw), 1)
+    except (TypeError, ValueError):
+        free_days = 90
+    return render_template("main/home.html", free_days=free_days)
 
 
 @bp.route("/dashboard")

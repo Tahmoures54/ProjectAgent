@@ -1,29 +1,22 @@
 {# Path: pms_app/templates/main/partials/_benefits.html #}
-<section id="benefits" class="benefits fade-in-up" aria-label="مزایای Project Agent">
-    <div class="benefits-background" aria-hidden="true">
-        <img src="{{ url_for('static', filename='img/hero/slide-1.jpg') }}"
-             alt="" loading="lazy">
-    </div>
+<section id="benefits" class="home-section" aria-label="چرا Project Agent">
+    <header class="home-section-head">
+        <h2>یک محصول برای چرخه واقعی کنترل پروژه</h2>
+        <p>رقبا اغلب تسک‌منیجر یا فایل اکسل‌اند. اینجا برنامه‌ریزی، اجرا، کنترل و حاکمیت داده در یک سامانه است.</p>
+    </header>
 
-    <h2>چرا تیم‌های حرفه‌ای Project Agent را انتخاب می‌کنند؟</h2>
-
-    <div class="benefits-grid">
+    <div class="home-benefit-grid" data-play-cards data-play-interval="2800">
         {% set benefits = [
-            {'icon': 'fa-sitemap',         'title': 'WBS و CBS واقعی',     'desc': 'ساختار شکست کار و هزینه سلسله‌مراتبی با آیتم قراردادی، صورت‌وضعیت و Import اکسل — نه فقط چک‌لیست ساده.'},
-            {'icon': 'fa-chart-pie',       'title': 'EVM استاندارد جهانی',   'desc': 'PV، EV، AC، CPI، SPI، EAC، TCPI و S-Curve در یک داشبورد؛ گزارش قابل دفاع به کارفرما.'},
-            {'icon': 'fa-clipboard-list',  'title': 'گزارش روزانه سایت',     'desc': 'پیمانکار ثبت می‌کند، مدیر تأیید می‌کند؛ پیشرفت فقط بعد از تأیید روی سیستم می‌نشیند — کنترل واقعی کارگاه.'},
-            {'icon': 'fa-triangle-exclamation', 'title': 'کانسرن با کنترل دسترسی', 'desc': 'دغدغه‌های فنی، ایمنی و قراردادی با سطح مشاهده خصوصی / پروژه / مدیران / شرکت و گردش‌کار حل.'},
-            {'icon': 'fa-file-contract',   'title': 'قرارداد و صورت‌وضعیت',  'desc': 'قرارداد، الحاقیه، آیتم و محاسبات خودکار؛ مناسب پیمانکاری و مشاوران ایرانی.'},
-            {'icon': 'fa-calendar-alt',    'title': 'تقویم جلالی بومی',     'desc': 'تاریخ شمسی در فرم‌ها و گزارش‌ها — بدون دردسر تبدیل دستی برای تیم‌های محلی.'},
-            {'icon': 'fa-users-cog',       'title': 'RBAC و Multi-tenant',  'desc': 'جداسازی کامل داده شرکت‌ها + نقش مالک، ادمین، مدیر، پیمانکار، ناظر.'},
-            {'icon': 'fa-shield-alt',      'title': 'امنیت سازمانی',        'desc': '2FA، هدرهای امنیتی، CSRF، لاگ ورود و آمادگی استقرار Docker/PostgreSQL.'},
-            {'icon': 'fa-mobile-alt',      'title': 'تجربه مدرن ۲۰۲۶',      'desc': 'UI واکنش‌گرا، دارک‌مود، دسترسی سریع از موبایل کارگاه تا دفتر مدیریت.'},
-            {'icon': 'fa-rocket',          'title': 'شروع سریع رایگان',     'desc': 'ثبت‌نام، تعریف شرکت و پروژه در دقایق اول — بدون نصب نرم‌افزار دسکتاپ قدیمی.'}
+            {'icon': 'fa-sitemap', 'title': 'WBS و CBS واقعی', 'desc': 'ساختار شکست کار و هزینه با آیتم قراردادی و ورود اکسل — نه فقط چک‌لیست.'},
+            {'icon': 'fa-chart-pie', 'title': 'EVM قابل دفاع', 'desc': 'PV، EV، AC، CPI، SPI، EAC و S-Curve از داده همان پروژه و قرارداد.'},
+            {'icon': 'fa-clipboard-list', 'title': 'گزارش روزانه سایت', 'desc': 'پیمانکار می‌نویسد، مدیر تأیید می‌کند؛ پیشرفت فقط بعد از تأیید اعمال می‌شود.'},
+            {'icon': 'fa-triangle-exclamation', 'title': 'کانسرن با دسترسی', 'desc': 'فنی، ایمنی، زمان و قرارداد با سطح خصوصی / پروژه / مدیران / شرکت.'},
+            {'icon': 'fa-file-contract', 'title': 'قرارداد و صورت‌وضعیت', 'desc': 'قرارداد، الحاقیه و آیتم روی همان CBS برای دفتر فنی.'},
+            {'icon': 'fa-shield-halved', 'title': 'جداسازی شرکت‌ها', 'desc': 'هر شرکت فقط داده خودش را می‌بیند. نقش مالک، ادمین، مدیر، پیمانکار و ناظر.'}
         ] %}
-
         {% for b in benefits %}
-        <article class="benefit-card">
-            <i class="fas {{ b.icon }} icon" aria-hidden="true"></i>
+        <article class="home-benefit-card" style="--i: {{ loop.index0 }}">
+            <div class="home-benefit-icon"><i class="fas {{ b.icon }}" aria-hidden="true"></i></div>
             <h3>{{ b.title }}</h3>
             <p>{{ b.desc }}</p>
         </article>
