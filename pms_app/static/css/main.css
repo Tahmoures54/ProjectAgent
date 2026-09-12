@@ -4,10 +4,10 @@
 
 :root {
   /* متغیرهای رنگ برای حفظ یکپارچگی (در صورت نیاز به استفاده در JS) */
-  --primary:        #2563eb;
-  --primary-light:  #3b82f6;
-  --primary-dark:   #1d4ed8;
-  --primary-glow:   rgba(37, 99, 235, 0.15);
+  --primary:        #0e7f9b;
+  --primary-light:  #1a9bb3;
+  --primary-dark:   #0b6480;
+  --primary-glow:   rgba(26, 155, 179, 0.15);
   
   --surface:        #ffffff;
   --surface-2:      #f8fafc;
@@ -95,13 +95,13 @@ body {
 .dark .nav-link-modern { color: #94a3b8; }
 
 .nav-link-modern:hover, .nav-link-modern.active {
-  background: #eff6ff;
-  color: #2563eb;
+  background: #eef8fb;
+  color: #0e7f9b;
 }
 
 .dark .nav-link-modern:hover, .dark .nav-link-modern.active {
-  background: #1e293b;
-  color: #3b82f6;
+  background: #0f4256;
+  color: #6ecad9;
 }
 
 /* Custom Search Input */
@@ -122,7 +122,7 @@ body {
 }
 
 .search-input:focus {
-  box-shadow: 0 0 0 2px #3b82f6;
+  box-shadow: 0 0 0 2px #1a9bb3;
   width: 16rem;
 }
 
@@ -208,10 +208,10 @@ body {
 
 /* Chat Bubbles */
 .chat-bubble-user {
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  background: linear-gradient(135deg, #0e7f9b, #1a9bb3);
   color: white;
   border-radius: 1rem 1rem 0 1rem;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 2px 8px rgba(26, 155, 179, 0.2);
 }
 
 .chat-bubble-bot {

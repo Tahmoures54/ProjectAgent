@@ -21,9 +21,9 @@
           fontFamily: { sans: ["Vazirmatn", "sans-serif"] },
           colors: {
             brand: {
-              50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd',
-              400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8',
-              800: '#1e40af', 900: '#1e3a8a'
+              50: '#eef8fb', 100: '#d5f0f6', 200: '#a8e0ec', 300: '#6ecad9',
+              400: '#3db4c8', 500: '#1a9bb3', 600: '#0e7f9b', 700: '#0b6480',
+              800: '#0d5168', 900: '#0f4256'
             }
           },
           animation: {
@@ -143,7 +143,7 @@
         <span class="text-xl font-bold text-slate-800 dark:text-white tracking-tight hidden md:inline">
           {{ config.get('APP_NAME', 'Project Agent') }}
         </span>
-        <div class="w-10 h-10 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/30">
+        <div class="w-10 h-10 bg-gradient-to-tr from-brand-600 to-teal-400 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/30">
           <i class="fa-solid fa-layer-group text-white text-lg"></i>
         </div>
       </a>
@@ -208,7 +208,7 @@
     </div>
 
     <div id="chat-window" class="chat-window hidden flex-col w-[90vw] max-w-sm h-[500px] bg-white dark:bg-slate-800 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-700 animate-fade-in-up origin-bottom">
-      <div class="bg-gradient-to-l from-brand-600 to-indigo-500 p-4 text-white flex justify-between items-center shadow-md">
+      <div class="bg-gradient-to-l from-brand-600 to-teal-500 p-4 text-white flex justify-between items-center shadow-md">
         <span class="font-bold flex items-center gap-2 text-sm">
           <i class="fa-solid fa-sparkles"></i> دستیار هوشمند Project Agent
         </span>
@@ -243,9 +243,8 @@
       <button class="dock-btn p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-brand-600 transition hidden sm:flex" data-tooltip="پروژه‌ها" aria-label="پروژه‌ها" onclick="window.location.href='{{ url_for('projects.projects') }}'">
         <i class="fa-solid fa-folder-open text-lg"></i>
       </button>
-      <button onclick="toggleChat()" class="relative w-16 h-16 -my-8 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-brand-500/40 hover:scale-110 active:scale-95 transition-transform duration-300 border-4 border-white dark:border-slate-800 z-10" aria-label="دستیار هوشمند">
+      <button onclick="toggleChat()" class="relative w-16 h-16 -my-8 bg-gradient-to-tr from-brand-600 to-teal-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-brand-500/40 hover:scale-105 active:scale-95 transition-transform duration-200 border-4 border-white dark:border-slate-800 z-10" aria-label="دستیار هوشمند">
         <i class="fa-solid fa-wand-magic-sparkles text-2xl"></i>
-        <span class="absolute inset-0 rounded-full bg-brand-500 animate-ping opacity-20" style="animation-duration: 2s;"></span>
       </button>
       <button class="dock-btn p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-brand-600 transition hidden sm:flex" data-tooltip="ایجاد پروژه" aria-label="ایجاد پروژه" onclick="window.location.href='{{ url_for('projects.project_new') }}'">
         <i class="fa-solid fa-plus text-lg"></i>

@@ -6,7 +6,7 @@
         <p>هیچ نصب دسکتاپی لازم نیست. مسیر زیر همان چیزی است که در محصول وجود دارد.</p>
     </header>
 
-    <ol class="home-steps" data-play-cards data-play-interval="2400">
+    <ol class="home-steps">
         {% set steps = [
             {'title': 'ثبت‌نام و شرکت', 'desc': 'حساب بسازید و شرکت خود را تعریف کنید.'},
             {'title': 'پروژه و تیم', 'desc': 'پروژه بسازید و پیمانکار یا ناظر را دعوت کنید.'},
@@ -15,7 +15,7 @@
             {'title': 'EVM و کانسرن', 'desc': 'شاخص‌ها را ببینید و دغدغه‌ها را با دسترسی درست پیگیری کنید.'}
         ] %}
         {% for s in steps %}
-        <li class="home-step{% if loop.first %} is-playing{% endif %}" style="--i: {{ loop.index0 }}">
+        <li class="home-step">
             <span class="home-step-num">{{ loop.index }}</span>
             <h3>{{ s.title }}</h3>
             <p>{{ s.desc }}</p>
