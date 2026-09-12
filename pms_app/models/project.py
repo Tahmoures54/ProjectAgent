@@ -113,6 +113,39 @@ class Project(db.Model):
             return True
         return self.has_member(user)
 
+    STATUS_TITLES = {
+        "active": "فعال",
+        "on_hold": "متوقف",
+        "closed": "بسته",
+        "completed": "تکمیل‌شده",
+        "cancelled": "لغو شده",
+        "delayed": "تأخیردار",
+    }
+
+    @property
+    def status_title(self) -> str:
+        return self.STATUS_TITLES.get(self.status, self.status or "نامشخص")
+
+    @property
+    def is_delayed(self) -> bool:
+        if self.status != "active" or not self.finish_date:
+            return False
+        return self.finish_date < date.today()
+
+    @property
+    def progress(self) -> float:
+        """Weighted physical progress (0–100) for dashboard / lists."""
+        try:
+            from pms_app.utils.progress import project_progress
+
+            return float(project_progress(self).get("overall_pct") or 0)
+        except Exception:
+            pct = self.percent_complete
+            try:
+                return float(pct or 0)
+            except (TypeError, ValueError):
+                return 0.0
+
     def __repr__(self) -> str:
         return (
             f"<Project id={self.id} company_id={self.company_id} "

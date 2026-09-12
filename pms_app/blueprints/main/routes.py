@@ -18,15 +18,20 @@ from flask import (
 )
 from flask_login import current_user, login_required
 
-from pms_app.extensions import db
 from pms_app.models.project import Project
-from pms_app.models.project_membership import ProjectMembership
 from pms_app.models.subscription import Subscription
+from pms_app.utils.assistant import answer_question
+from pms_app.utils.inbox import (
+    accessible_projects_query,
+    dashboard_kpis,
+    global_search,
+    open_concerns_for_dashboard,
+    pending_reports_for_dashboard,
+)
 from pms_app.utils.security import permission_required
 from pms_app.utils.jalali import (
     gregorian_to_jalali,
     jalali_to_gregorian_dict,
-    format_jalali,
 )
 from . import bp
 from .forms import PremiumActivateForm, SettingsForm
@@ -100,34 +105,44 @@ def dashboard():
     page = request.args.get("page", 1, type=int)
     per_page = current_app.config.get("PER_PAGE", 20)
 
-    query = Project.query
-
-    if current_user.is_owner:
-        pass
-    elif current_user.is_company_admin:
-        cid = getattr(current_user, "company_id", None)
-        if cid:
-            query = query.filter(Project.company_id == cid)
-        else:
-            flash("حساب شما به شرکتی متصل نیست.", "warning")
-            query = query.filter(Project.id == -1)
-    else:
-        query = (
-            query.join(ProjectMembership)
-            .filter(ProjectMembership.user_id == current_user.id)
-            .filter(ProjectMembership.status == "active")
-        )
+    query = accessible_projects_query(current_user)
+    if not current_user.is_owner and not getattr(current_user, "company_id", None):
+        flash("حساب شما به شرکتی متصل نیست.", "warning")
 
     query = query.order_by(Project.updated_at.desc())
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    kpis = dashboard_kpis(current_user)
 
     return render_template(
         "main/dashboard.html",
         projects=pagination.items,
         pagination=pagination,
-        total_projects=pagination.total,
+        total_projects=kpis["total_projects"],
+        total_contracts=kpis["total_contracts"],
+        ongoing_projects=kpis["ongoing_projects"],
+        delayed_projects=kpis["delayed_projects"],
+        pending_reports_count=kpis["pending_reports"],
+        open_concerns_count=kpis["open_concerns"],
+        critical_concerns_count=kpis["critical_concerns"],
+        pending_reports=pending_reports_for_dashboard(current_user),
+        open_concerns=open_concerns_for_dashboard(current_user),
         user_plan=_get_user_plan(current_user),
     )
+
+
+@bp.route("/search")
+@login_required
+def search():
+    q = (request.args.get("q") or "").strip()
+    results = global_search(current_user, q)
+    return render_template("main/search.html", q=q, results=results)
+
+
+@bp.route("/assistant/ask", methods=["POST"])
+def assistant_ask():
+    payload = request.get_json(silent=True) or {}
+    question = (payload.get("q") or request.form.get("q") or "").strip()
+    return jsonify(answer_question(question))
 
 
 @bp.route("/about")
@@ -231,6 +246,8 @@ def api_to_gregorian():
 
 @bp.route("/test-images")
 def test_images():
+    if not current_app.debug:
+        abort(404)
     static_folder = current_app.static_folder
     hero_path = os.path.join(static_folder, "img", "hero") if static_folder else None
 
@@ -259,6 +276,8 @@ def test_images():
 
 @bp.route("/debug-static")
 def debug_static():
+    if not current_app.debug:
+        abort(404)
     static_folder = current_app.static_folder
     hero_path = os.path.join(static_folder, "img", "hero") if static_folder else None
 

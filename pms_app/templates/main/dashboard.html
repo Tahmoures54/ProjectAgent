@@ -71,7 +71,7 @@
 
   <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" aria-label="آمار کلیدی">
     {% set stats = [
-        {'title': 'کل پروژه‌ها', 'value': projects|length, 'icon': 'fa-folder', 'color': 'indigo', 'desc': 'مدیریت منابع و تیم‌ها'},
+        {'title': 'کل پروژه‌ها', 'value': total_projects|default(projects|length), 'icon': 'fa-folder', 'color': 'indigo', 'desc': 'مدیریت منابع و تیم‌ها'},
         {'title': 'قراردادهای فعال', 'value': total_contracts|default(0), 'icon': 'fa-file-signature', 'color': 'emerald', 'desc': 'تعهدات جاری مالی'},
         {'title': 'در جریان', 'value': ongoing_projects|default(0), 'icon': 'fa-spinner fa-spin-pulse', 'color': 'blue', 'desc': 'عملیات در حال اجرا'},
         {'title': 'تأخیردار', 'value': delayed_projects|default(0), 'icon': 'fa-clock-rotate-left', 'color': 'rose', 'desc': 'نیاز به بررسی فوری'}
@@ -89,6 +89,75 @@
       <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">{{ stat.desc }}</p>
     </div>
     {% endfor %}
+  </section>
+
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-4" aria-label="وضعیت عملیاتی">
+    <a href="{{ url_for('daily_reports.index', status='submitted') }}" class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-orange-100 dark:border-orange-900/40 hover:border-orange-300 no-underline">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-bold text-gray-700 dark:text-gray-200">گزارش در انتظار تأیید</span>
+        <span class="text-2xl font-black text-orange-600">{{ pending_reports_count|default(0) }}</span>
+      </div>
+      <p class="text-xs text-gray-500 mt-2">ارسال‌شده یا در حال بررسی</p>
+    </a>
+    <a href="{{ url_for('concerns.index') }}" class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-amber-100 dark:border-amber-900/40 hover:border-amber-300 no-underline">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-bold text-gray-700 dark:text-gray-200">کانسرن باز</span>
+        <span class="text-2xl font-black text-amber-600">{{ open_concerns_count|default(0) }}</span>
+      </div>
+      <p class="text-xs text-gray-500 mt-2">نیاز به رسیدگی</p>
+    </a>
+    <a href="{{ url_for('concerns.index', priority='critical') }}" class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-rose-100 dark:border-rose-900/40 hover:border-rose-300 no-underline">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-bold text-gray-700 dark:text-gray-200">کانسرن بحرانی</span>
+        <span class="text-2xl font-black text-rose-600">{{ critical_concerns_count|default(0) }}</span>
+      </div>
+      <p class="text-xs text-gray-500 mt-2">اولویت فوری</p>
+    </a>
+  </section>
+
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+        <h2 class="text-sm font-bold text-gray-800 dark:text-white">گزارش‌های منتظر تأیید</h2>
+        <a href="{{ url_for('daily_reports.index') }}" class="text-xs text-indigo-600 font-bold no-underline">همه</a>
+      </div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-700">
+        {% for r in pending_reports|default([]) %}
+        <li>
+          <a href="{{ url_for('daily_reports.detail', report_id=r.id) }}" class="flex items-center justify-between px-5 py-3 hover:bg-orange-50/40 no-underline">
+            <div>
+              <div class="text-sm font-bold text-gray-800 dark:text-white">{{ r.project.project_name if r.project else 'پروژه' }}</div>
+              <div class="text-xs text-gray-500">{{ r.report_date }} · {{ r.status_label }}</div>
+            </div>
+            <i class="fas fa-chevron-left text-xs text-gray-400"></i>
+          </a>
+        </li>
+        {% else %}
+        <li class="px-5 py-8 text-sm text-gray-400 text-center">گزارش در انتظار تأیید نیست.</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+        <h2 class="text-sm font-bold text-gray-800 dark:text-white">کانسرن‌های نیازمند اقدام</h2>
+        <a href="{{ url_for('concerns.index') }}" class="text-xs text-indigo-600 font-bold no-underline">همه</a>
+      </div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-700">
+        {% for c in open_concerns|default([]) %}
+        <li>
+          <a href="{{ url_for('concerns.detail', concern_id=c.id) }}" class="flex items-center justify-between px-5 py-3 hover:bg-rose-50/40 no-underline">
+            <div>
+              <div class="text-sm font-bold text-gray-800 dark:text-white">{{ c.title }}</div>
+              <div class="text-xs text-gray-500">{{ c.priority_label }} · {{ c.status_label }}</div>
+            </div>
+            <i class="fas fa-chevron-left text-xs text-gray-400"></i>
+          </a>
+        </li>
+        {% else %}
+        <li class="px-5 py-8 text-sm text-gray-400 text-center">کانسرن بازی برای نمایش نیست.</li>
+        {% endfor %}
+      </ul>
+    </div>
   </section>
 
   <section class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -149,6 +218,9 @@
                 </a>
                 <a href="{{ url_for('daily_reports.project_list', project_id=p.id) }}" class="p-2 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/50 rounded-lg transition-colors" title="گزارش روزانه">
                   <i class="fas fa-clipboard-list"></i>
+                </a>
+                <a href="{{ url_for('concerns.index', project_id=p.id) }}" class="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/50 rounded-lg transition-colors" title="کانسرن‌ها">
+                  <i class="fas fa-triangle-exclamation"></i>
                 </a>
                 <a href="{{ url_for('contracts.contracts', project_id=p.id) }}" class="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 rounded-lg transition-colors" title="قراردادها">
                   <i class="fas fa-file-invoice-dollar"></i>
