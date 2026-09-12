@@ -9,8 +9,6 @@ from flask_login import UserMixin
 from pms_app.extensions import check_password_hash, db, generate_password_hash, login_manager
 from pms_app.models.association import user_roles
 
-DEFAULT_OWNER_EMAIL = "tahmoures_p@hotmail.com"
-
 
 def utcnow() -> datetime:
     return datetime.utcnow()
@@ -128,11 +126,10 @@ class User(db.Model, UserMixin):
     @property
     def is_owner_by_email(self) -> bool:
         try:
-            from flask import current_app
-            owner_email = current_app.config.get("OWNER_EMAIL") or DEFAULT_OWNER_EMAIL
+            from pms_app.utils.security import configured_owner_emails
+            return normalize_email(self.email) in configured_owner_emails()
         except Exception:
-            owner_email = DEFAULT_OWNER_EMAIL
-        return normalize_email(self.email) == normalize_email(owner_email)
+            return False
 
     @property
     def is_owner(self) -> bool:

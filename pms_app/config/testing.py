@@ -22,4 +22,5 @@ class TestingConfig:
     # غیرفعال‌سازی Debug برای جلوگیری از رندر خطاهای تعاملی در تست
     DEBUG = False
 
-    APP_NAME = "Project Agent"
+    OWNER_EMAIL = ""
+    OWNER_EMAILS = ""

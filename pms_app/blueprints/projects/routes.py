@@ -20,16 +20,13 @@ from pms_app.utils.entitlements import can_create
 from pms_app.utils.security import ensure_rbac_seed
 from pms_app.utils.evm import project_evm, project_s_curve
 from pms_app.utils.progress import project_progress
+from pms_app.utils.access import (
+    current_company_id as _current_company_id,
+    get_project_or_403,
+    scope_projects_query,
+)
 from . import bp
 from .forms import ProjectForm, InviteToProjectForm, ActionItemForm
-
-
-def _current_company_id() -> Optional[int]:
-    cid = getattr(current_user, "company_id", None)
-    try:
-        return int(cid) if cid is not None else None
-    except (ValueError, TypeError):
-        return None
 
 
 def _reject_inactive_users():
@@ -50,31 +47,6 @@ def require_permission(perm: str):
             return f(*args, **kwargs)
         return wrapper
     return decorator
-
-
-def scope_projects_query(base_query):
-    if current_user.is_owner:
-        return base_query
-    cid = _current_company_id()
-    if cid is None:
-        abort(403, description="کاربر به شرکتی تعلق ندارد")
-    base_query = base_query.filter(Project.company_id == cid)
-    if current_user.is_company_admin:
-        return base_query
-    return (
-        base_query.join(ProjectMembership)
-        .filter(ProjectMembership.user_id == current_user.id)
-        .filter(ProjectMembership.status == "active")
-    )
-
-
-def get_project_or_403(project_id: int) -> Project:
-    project = db.session.get(Project, project_id)
-    if not project:
-        abort(404)
-    if not current_user.can_access_project(project):
-        abort(403, description="شما به این پروژه دسترسی ندارید")
-    return project
 
 
 def set_project_company(project: Project) -> None:

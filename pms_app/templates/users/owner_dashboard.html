@@ -141,7 +141,7 @@
                             </thead>
                             <tbody class="divide-y divide-slate-50">
                                 {% for u in users %}
-                                {% set u_is_owner = u.email.lower() == 'tahmoures_p@hotmail.com' %}
+                                {% set u_is_owner = u.is_owner %}
                                 <tr class="modern-tr">
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3">
