@@ -1,57 +1,88 @@
 {# Path: pms_app/templates/main/partials/_hero.html #}
-<section class="hero" aria-label="بخش اصلی">
-    <div class="hero-slider" aria-hidden="true">
-        {% set hero_images = [
-            {'src': url_for('static', filename='img/hero/slide-1.jpg'), 'alt': 'کنترل پروژه حرفه‌ای'},
-            {'src': url_for('static', filename='img/hero/slide-2.jpg'), 'alt': 'مدیریت تیم پروژه'},
-            {'src': url_for('static', filename='img/hero/slide-3.jpg'), 'alt': 'گزارش‌گیری و EVM'},
-            {'src': url_for('static', filename='img/hero/slide-4.jpg'), 'alt': 'موفقیت پروژه‌ها'}
-        ] %}
-        {% for img in hero_images %}
-        <div class="hero-slide {% if loop.first %}active{% endif %}" data-slide="{{ loop.index0 }}">
-            <img src="{{ img.src }}" alt="{{ img.alt }}"
-                 loading="{{ 'eager' if loop.first else 'lazy' }}"
-                 fetchpriority="{{ 'high' if loop.first else 'auto' }}">
+{% set days = free_days|default(90) %}
+{% set days_label = free_days_fa|default(days) %}
+<section class="home-hero" aria-label="معرفی Project Agent">
+    <div class="home-hero-glow" aria-hidden="true"></div>
+
+    <div class="home-hero-grid">
+        <div class="home-hero-copy">
+            <p class="home-kicker">کنترل پروژه · پیمانکاری · مشاور</p>
+            <h1>پروژه‌تان را با داده واقعی کنترل کنید — نه با حدس و اکسل پراکنده</h1>
+            <p class="home-lead">
+                Project Agent لایه‌های واقعی کنترل پروژه را یکجا دارد:
+                ساختار شکست کار و هزینه، ارزش کسب‌شده، گزارش روزانه کارگاه با تأیید مدیر،
+                و کانسرن با سطح دسترسی. داده هر شرکت از شرکت دیگر جداست.
+            </p>
+
+            <div class="home-cta-row">
+                {% if not current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.register') }}" class="home-btn home-btn-primary">
+                        شروع رایگان {{ days_label }} روزه
+                    </a>
+                    <a href="{{ url_for('auth.login') }}" class="home-btn home-btn-ghost">ورود</a>
+                    <a href="{{ url_for('billing.pricing') }}" class="home-btn home-btn-text">پلن‌ها</a>
+                {% else %}
+                    <a href="{{ url_for('main.dashboard') }}" class="home-btn home-btn-primary">داشبورد من</a>
+                    <a href="{{ url_for('projects.project_new') }}" class="home-btn home-btn-ghost">پروژه جدید</a>
+                {% endif %}
+            </div>
+
+            <ul class="home-trust-list">
+                <li>ثبت‌نام بدون کارت بانکی</li>
+                <li>جداسازی داده بین شرکت‌ها</li>
+                <li>تقویم جلالی در فرم‌ها</li>
+            </ul>
         </div>
-        {% endfor %}
-    </div>
 
-    <div class="hero-overlay" aria-hidden="true"></div>
-
-    <div class="hero-content">
-        <span class="hero-badge">EVM · CBS · گزارش روزانه · کانسرن · جلالی · ۲۰۲۶</span>
-        <h1>کنترل پروژه را با <span class="brand">Project Agent</span> یک پله جلوتر ببرید</h1>
-        <p>تنها پلتفرم بومی که Earned Value، ساختار شکست هزینه، گزارش روزانه کارگاه با تأیید مدیر و مدیریت کانسرن با کنترل دسترسی را در یکجا برای پیمانکاران و مشاوران ایرانی یکپارچه کرده است.</p>
-
-        <div class="cta-buttons">
-            {% if not current_user.is_authenticated %}
-                <a href="{{ url_for('auth.register') }}" class="button" aria-label="ثبت‌نام رایگان">
-                    <i class="fas fa-rocket" aria-hidden="true"></i>
-                    شروع رایگان — بدون کارت
-                </a>
-                <a href="#benefits" class="button outline">
-                    <i class="fas fa-chart-line" aria-hidden="true"></i>
-                    چرا از رقبا جلوتریم؟
-                </a>
-            {% else %}
-                <a href="{{ url_for('main.dashboard') }}" class="button">
-                    <i class="fas fa-tachometer-alt" aria-hidden="true"></i>
-                    داشبورد من
-                </a>
-                <a href="{{ url_for('projects.projects') }}" class="button outline">
-                    <i class="fas fa-project-diagram" aria-hidden="true"></i>
-                    پروژه‌ها
-                </a>
-            {% endif %}
+        <div class="home-hero-stage" aria-label="نمایش ماژول‌ها">
+            <div class="home-stack" data-play-cards data-play-interval="2800" data-play-mode="stack">
+                <article class="home-stack-card is-playing">
+                    <span class="home-stack-tag">گزارش روزانه</span>
+                    <h2>کارگاه ثبت می‌کند؛ پیشرفت بعد از تأیید می‌نشیند</h2>
+                    <p>نیرو، ماشین‌آلات و درصد پیشنهادی تا تأیید مدیر روی آیتم اعمال نمی‌شود.</p>
+                    <div class="home-stack-preview" aria-hidden="true">
+                        <span class="home-chip">در انتظار تأیید</span>
+                        <span class="home-bar"></span>
+                        <span class="home-bar home-bar-short"></span>
+                    </div>
+                </article>
+                <article class="home-stack-card">
+                    <span class="home-stack-tag">EVM</span>
+                    <h2>CPI و SPI از داده همان پروژه</h2>
+                    <p>ارزش کسب‌شده، انحراف هزینه و زمان، و S-Curve روی قرارداد و آیتم واقعی.</p>
+                    <div class="home-stack-preview" aria-hidden="true">
+                        <span class="home-chip">شاخص واقعی</span>
+                        <span class="home-curve"></span>
+                    </div>
+                </article>
+                <article class="home-stack-card">
+                    <span class="home-stack-tag">کانسرن</span>
+                    <h2>دغدغه با سطح مشاهده مشخص</h2>
+                    <p>خصوصی، اعضای پروژه، فقط مدیران پروژه، یا کل شرکت — بدون نشتی به شرکت دیگر.</p>
+                    <div class="home-stack-preview" aria-hidden="true">
+                        <span class="home-chip">چهار سطح دسترسی</span>
+                        <span class="home-bar"></span>
+                        <span class="home-bar home-bar-mid"></span>
+                    </div>
+                </article>
+                <article class="home-stack-card">
+                    <span class="home-stack-tag">CBS / قرارداد</span>
+                    <h2>آیتم قراردادی و ورود از اکسل</h2>
+                    <p>WBS و CBS سلسله‌مراتبی؛ صورت‌وضعیت روی همان ساختار هزینه.</p>
+                    <div class="home-stack-preview" aria-hidden="true">
+                        <span class="home-chip">ورود اکسل</span>
+                        <span class="home-bars-col">
+                            <i></i><i></i><i></i><i></i>
+                        </span>
+                    </div>
+                </article>
+            </div>
+            <div class="home-stack-dots" data-play-dots aria-hidden="true">
+                <span class="is-on"></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
         </div>
-    </div>
-
-    <div class="hero-dots" role="tablist" aria-label="اسلایدر تصاویر">
-        {% for i in range(4) %}
-        <button class="hero-dot {% if loop.first %}active{% endif %}"
-                data-slide="{{ i }}"
-                role="tab"
-                aria-label="اسلاید {{ i + 1 }}"></button>
-        {% endfor %}
     </div>
 </section>

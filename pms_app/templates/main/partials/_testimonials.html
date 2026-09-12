@@ -1,27 +1,22 @@
 {# Path: pms_app/templates/main/partials/_testimonials.html #}
-<section class="testimonials fade-in-up" aria-label="نظرات مشتریان">
-    <h2>مدیران پروژه چه می‌گویند؟</h2>
+{# مخاطبان واقعی نقش‌های محصول — بدون نقل‌قول ساختگی #}
+<section class="home-section" aria-label="برای چه کسانی">
+    <header class="home-section-head">
+        <h2>برای نقشی که همین امروز در پروژه دارید</h2>
+        <p>این‌ها نقش‌های پشتیبانی‌شده در سامانه هستند؛ نقل‌قول ساختگی از مشتری نمایش داده نمی‌شود.</p>
+    </header>
 
-    <div class="testimonials-grid">
-        {% set testimonials = [
-            {'text': 'با Project Agent توانستیم ساختار CBS پروژه‌ها را استاندارد کنیم و گزارش‌های EVM را به‌صورت هفتگی به کارفرما ارائه دهیم.',
-             'name': 'مهندس رضایی', 'role': 'مدیر کنترل پروژه، شرکت آبان', 'initial': 'ر'},
-            {'text': 'مدیریت قرارداد و صورت‌وضعیت‌ها همراه با Import اکسل، زمان آماده‌سازی گزارش‌ها را به شکل چشمگیری کاهش داد.',
-             'name': 'مهندس موسوی',  'role': 'رئیس دفتر فنی، هلدینگ پارس', 'initial': 'م'},
-            {'text': 'داشبوردهای لحظه‌ای CPI و SPI به ما کمک کرد انحرافات را زودتر شناسایی و اصلاح کنیم.',
-             'name': 'دکتر احمدی',  'role': 'مدیرعامل، مهندسین مشاور نیک', 'initial': 'ا'}
+    <div class="home-audience" data-play-cards data-play-interval="2500">
+        {% set roles = [
+            {'title': 'دفتر فنی / کنترل پروژه', 'desc': 'CBS، صورت‌وضعیت، EVM و انحراف زمان و هزینه روی داده همان قرارداد.'},
+            {'title': 'مدیر پروژه', 'desc': 'تأیید گزارش روزانه، کانسرن مدیران، و دید تجمیعی پروژه بدون داده شرکت دیگر.'},
+            {'title': 'پیمانکار کارگاه', 'desc': 'ثبت گزارش روزانه و کانسرن اجرایی؛ پیشرفت تا تأیید مدیر اعمال نمی‌شود.'},
+            {'title': 'ادمین شرکت', 'desc': 'کاربران، پروژه‌ها و دسترسی‌ها فقط در محدوده همان شرکت.'}
         ] %}
-
-        {% for t in testimonials %}
-        <article class="testimonial-card">
-            <p class="testimonial-text">{{ t.text }}</p>
-            <div class="testimonial-author">
-                <div class="testimonial-avatar" aria-hidden="true">{{ t.initial }}</div>
-                <div>
-                    <div class="testimonial-name">{{ t.name }}</div>
-                    <div class="testimonial-role">{{ t.role }}</div>
-                </div>
-            </div>
+        {% for r in roles %}
+        <article class="home-audience-card{% if loop.first %} is-playing{% endif %}" style="--i: {{ loop.index0 }}">
+            <h3>{{ r.title }}</h3>
+            <p>{{ r.desc }}</p>
         </article>
         {% endfor %}
     </div>
