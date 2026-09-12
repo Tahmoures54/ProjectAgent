@@ -28,7 +28,7 @@ from pms_app.utils.inbox import (
     open_concerns_for_dashboard,
     pending_reports_for_dashboard,
 )
-from pms_app.utils.security import permission_required
+from pms_app.utils.security import owner_required
 from pms_app.utils.jalali import (
     gregorian_to_jalali,
     jalali_to_gregorian_dict,
@@ -167,7 +167,7 @@ def privacy_policy():
 
 @bp.route("/settings", methods=["GET", "POST"])
 @login_required
-@permission_required("users.admin")
+@owner_required
 def settings():
     form = SettingsForm()
     data = _load_settings()
@@ -304,13 +304,17 @@ def serve_image(filename: str):
         abort(404)
 
     img_folder = os.path.join(current_app.static_folder, "img")
-    full_path = os.path.join(img_folder, filename)
+    img_root = os.path.abspath(img_folder)
+    full_path = os.path.abspath(os.path.join(img_folder, filename))
 
-    if not os.path.exists(full_path):
-        abort(404)
-
-    if not os.path.abspath(full_path).startswith(os.path.abspath(img_folder)):
+    try:
+        if os.path.commonpath([img_root, full_path]) != img_root:
+            abort(403)
+    except ValueError:
         abort(403)
+
+    if not os.path.exists(full_path) or not os.path.isfile(full_path):
+        abort(404)
 
     directory = os.path.dirname(full_path)
     file_name = os.path.basename(full_path)

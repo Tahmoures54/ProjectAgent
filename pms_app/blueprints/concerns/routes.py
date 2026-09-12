@@ -13,6 +13,7 @@ from pms_app.models.concern import Concern, ConcernComment, ConcernHistory
 from pms_app.models.project import Project
 from pms_app.models.project_membership import ProjectMembership
 from pms_app.models.user import User
+from pms_app.utils.inbox import visible_concerns_query
 from pms_app.utils.notify import (
     notify_concern_assigned,
     notify_concern_created,
@@ -68,50 +69,6 @@ def _assignee_choices(project_id: Optional[int] = None) -> List[Tuple[int, str]]
     return choices
 
 
-def _filter_visible(query):
-    if current_user.is_owner:
-        return query
-    cid = _company_id()
-    if cid is None:
-        abort(403)
-    query = query.filter(Concern.company_id == cid)
-    if current_user.is_company_admin:
-        return query
-
-    uid = current_user.id
-    member_project_ids = [
-        m.project_id
-        for m in ProjectMembership.query.filter_by(user_id=uid, status="active").all()
-    ]
-    manager_project_ids = [
-        m.project_id
-        for m in ProjectMembership.query.filter_by(user_id=uid, status="active")
-        .filter(ProjectMembership.role.in_(["admin", "manager"]))
-        .all()
-    ]
-
-    conditions = [
-        Concern.raised_by_id == uid,
-        Concern.assignee_id == uid,
-        Concern.visibility == "company",
-    ]
-    if member_project_ids:
-        conditions.append(
-            db.and_(Concern.visibility == "project", Concern.project_id.in_(member_project_ids))
-        )
-    if manager_project_ids or current_user.has_role("manager"):
-        conditions.append(Concern.visibility == "managers_only")
-        if manager_project_ids:
-            conditions.append(
-                db.and_(
-                    Concern.visibility == "managers_only",
-                    or_(Concern.project_id.in_(manager_project_ids), Concern.project_id.is_(None)),
-                )
-            )
-
-    return query.filter(or_(*conditions))
-
-
 def _assignee_in_company(user_id: Optional[int], company_id: Optional[int]) -> Optional[int]:
     if not user_id:
         return None
@@ -151,7 +108,7 @@ def index():
     q = request.args.get("q", "").strip()
     mine = request.args.get("mine", "").strip() == "1"
 
-    query = _filter_visible(Concern.query)
+    query = visible_concerns_query(current_user)
 
     if status:
         query = query.filter(Concern.status == status)

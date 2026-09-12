@@ -336,8 +336,8 @@ def project_invite(project_id: int):
                 flash("خطا در ایجاد حساب کاربری.", "danger")
                 return render_template("projects/invite.html", form=form, project=project)
         if target_user.company_id != project.company_id:
-            flash("کاربر باید از همان شرکت باشد.", "danger")
-            return render_template("projects/invite.html", form=form, project=project)
+            flash("این ایمیل قابل دعوت به این پروژه نیست.", "danger")
+            return redirect(url_for("projects.project_members", project_id=project_id))
         existing = ProjectMembership.query.filter_by(project_id=project.id, user_id=target_user.id).first()
         if existing:
             flash("این کاربر قبلاً به پروژه دعوت شده یا عضو است.", "info")

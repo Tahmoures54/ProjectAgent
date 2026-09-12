@@ -279,6 +279,10 @@ class Concern(db.Model):
         if getattr(user, "company_id", None) != self.company_id:
             return False
 
+        project = self.project
+        if project is not None and getattr(project, "company_id", None) != self.company_id:
+            return False
+
         if getattr(user, "is_company_admin", False):
             return True
 
@@ -297,17 +301,9 @@ class Concern(db.Model):
             return True
 
         if vis == "managers_only":
-            if user.has_role("manager") or user.has_permission("concerns.manage"):
-                return True
-            # مدیر پروژه؟
-            if self.project_id:
-                from pms_app.models.project_membership import ProjectMembership
+            from pms_app.utils.access import user_manages_project
 
-                m = ProjectMembership.query.filter_by(
-                    project_id=self.project_id, user_id=uid, status="active"
-                ).first()
-                return bool(m and m.role in ("admin", "manager"))
-            return False
+            return user_manages_project(user, self.project_id)
 
         if vis == "project":
             if not self.project_id:

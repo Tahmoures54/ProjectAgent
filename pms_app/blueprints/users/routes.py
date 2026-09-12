@@ -155,7 +155,7 @@ def user_new():
 
         email = _safe_email(form.email.data)
         if User.query.filter(func.lower(User.email) == email).first():
-            flash("این ایمیل قبلاً ثبت شده است.", "danger")
+            flash("این ایمیل قابل ثبت نیست.", "danger")
             return render_template("users/user_form.html", form=form, title="کاربر جدید")
 
         user = User(
@@ -262,7 +262,7 @@ def invite():
 
         email = _safe_email(form.email.data)
         if User.query.filter(func.lower(User.email) == email).first():
-            flash("این ایمیل قبلاً ثبت شده است.", "warning")
+            flash("این ایمیل قابل دعوت نیست.", "warning")
             return render_template("users/invite.html", form=form)
 
         user = User(email=email, is_active=False, company_id=_current_company_id())

@@ -90,9 +90,9 @@ def _list_to_raw(items: Optional[list], keys: List[str]) -> str:
 
 
 def can_manage_project_reports(project: Project) -> bool:
+    if not current_user.can_access_project(project):
+        return False
     if current_user.is_owner or current_user.is_company_admin:
-        return True
-    if current_user.has_permission("daily_reports.approve"):
         return True
     membership = ProjectMembership.query.filter_by(
         project_id=project.id, user_id=current_user.id, status="active"
@@ -117,7 +117,12 @@ def get_report_or_403(report_id: int) -> DailyReport:
     report = db.session.get(DailyReport, report_id)
     if not report:
         abort(404)
-    if not current_user.can_access_project(report.project):
+    project = report.project
+    if project is None:
+        abort(404)
+    if report.company_id and project.company_id and int(report.company_id) != int(project.company_id):
+        abort(404)
+    if not current_user.can_access_project(project):
         abort(403)
     return report
 

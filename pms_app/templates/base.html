@@ -84,7 +84,7 @@
               <a href="{{ url_for('auth.change_password') }}" class="dropdown-item-modern">
                 <i class="fa-solid fa-circle-user opacity-50 w-5"></i> پروفایل و رمز عبور
               </a>
-              {% if is_admin %}
+              {% if current_user.is_owner %}
                 <a href="{{ url_for('main.settings') }}" class="dropdown-item-modern">
                   <i class="fa-solid fa-cog opacity-50 w-5"></i> تنظیمات سیستم
                 </a>
@@ -244,9 +244,15 @@
       <button class="dock-btn p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-brand-600 transition hidden sm:flex" data-tooltip="ایجاد پروژه" aria-label="ایجاد پروژه" onclick="window.location.href='{{ url_for('projects.project_new') }}'">
         <i class="fa-solid fa-plus text-lg"></i>
       </button>
-      <button class="dock-btn p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-brand-600 transition" data-tooltip="تنظیمات" aria-label="تنظیمات" onclick="window.location.href='{{ url_for('main.settings') }}'">
+      {% if current_user.is_authenticated and current_user.is_owner %}
+      <button class="dock-btn p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-brand-600 transition" data-tooltip="تنظیمات سیستم" aria-label="تنظیمات سیستم" onclick="window.location.href='{{ url_for('main.settings') }}'">
         <i class="fa-solid fa-gear text-lg"></i>
       </button>
+      {% else %}
+      <button class="dock-btn p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-brand-600 transition" data-tooltip="تنظیمات حساب" aria-label="تنظیمات حساب" onclick="window.location.href='{{ url_for('auth.change_password') }}'">
+        <i class="fa-solid fa-gear text-lg"></i>
+      </button>
+      {% endif %}
     </div>
   </div>
 

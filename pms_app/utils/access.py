@@ -21,6 +21,8 @@ from pms_app.models.item import ContractItem
 from pms_app.models.project import Project
 from pms_app.models.project_membership import ProjectMembership
 
+PROJECT_MANAGER_ROLES = ("admin", "manager")
+
 
 def current_company_id(user=None) -> Optional[int]:
     user = user if user is not None else current_user
@@ -38,6 +40,19 @@ def user_can_access_project(user, project: Optional[Project]) -> bool:
     if not callable(checker):
         return False
     return bool(checker(project))
+
+
+def user_manages_project(user, project_id: Optional[int]) -> bool:
+    """True if the user is an active project admin/manager (not a company-wide role)."""
+    if not user or not getattr(user, "is_authenticated", False) or not project_id:
+        return False
+    membership = ProjectMembership.query.filter_by(
+        project_id=int(project_id),
+        user_id=user.id,
+        status="active",
+    ).first()
+    role = (getattr(membership, "role", None) or "").strip().lower()
+    return bool(membership and role in PROJECT_MANAGER_ROLES)
 
 
 def get_project_or_403(project_id: int, *, user=None) -> Project:

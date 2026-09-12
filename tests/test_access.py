@@ -296,3 +296,122 @@ def test_progress_apply_ignores_other_company_items(db_session):
     assert float(item_a.actual_progress_percentage) == 40
     assert float(item_b.actual_progress_percentage) == 10
 
+
+def test_global_settings_are_owner_only(client, db_session):
+    company, *_ = _company_project_contract(db_session, "SET")
+    admin = _user(db_session, "set_admin", "company_admin", company.id)
+    owner = _user(db_session, "set_owner", "owner")
+
+    _login(client, admin.email)
+    assert client.get("/settings").status_code == 403
+    denied = client.post(
+        "/settings",
+        data={
+            "document_types": "secret-from-tenant",
+            "disciplines": "",
+            "companies": "",
+            "task_statuses": "",
+        },
+    )
+    assert denied.status_code == 403
+
+    client.get("/logout")
+    _login(client, owner.email)
+    allowed = client.get("/settings")
+    assert allowed.status_code == 200
+    html = allowed.get_data(as_text=True)
+    assert "secret-from-tenant" not in html
+
+
+def test_managers_only_concern_stays_on_that_project(client, db_session):
+    company, project, _, _ = _company_project_contract(db_session, "MO")
+    other = Project(
+        company_id=company.id,
+        project_code="PRJ-MO2",
+        project_name="Other project MO",
+        industry="construction",
+        base_currency="IRR",
+        status="active",
+    )
+    db_session.add(other)
+    db_session.flush()
+
+    admin = _user(db_session, "mo_admin", "company_admin", company.id)
+    company_manager = _user(db_session, "mo_role_mgr", "manager", company.id)
+    project_manager = _user(db_session, "mo_pm", "company_user", company.id)
+    other_pm = _user(db_session, "mo_other_pm", "manager", company.id)
+    db_session.add_all(
+        [
+            ProjectMembership(
+                project_id=project.id,
+                user_id=project_manager.id,
+                role="manager",
+                status="active",
+            ),
+            ProjectMembership(
+                project_id=other.id,
+                user_id=other_pm.id,
+                role="manager",
+                status="active",
+            ),
+            ProjectMembership(
+                project_id=other.id,
+                user_id=company_manager.id,
+                role="member",
+                status="active",
+            ),
+        ]
+    )
+    concern = Concern(
+        company_id=company.id,
+        project_id=project.id,
+        title="managers-only secret MO",
+        visibility="managers_only",
+        raised_by_id=admin.id,
+        status="open",
+        priority="high",
+        category="safety",
+    )
+    db_session.add(concern)
+    db_session.commit()
+
+    assert concern.can_view(admin) is True
+    assert concern.can_view(project_manager) is True
+    assert concern.can_view(company_manager) is False
+    assert concern.can_view(other_pm) is False
+
+    _login(client, company_manager.email)
+    listing = client.get("/concerns/")
+    assert listing.status_code == 200
+    html = listing.get_data(as_text=True)
+    assert "managers-only secret MO" not in html
+    assert client.get(f"/concerns/{concern.id}").status_code in (403, 404)
+
+    client.get("/logout")
+    _login(client, project_manager.email)
+    listing = client.get("/concerns/")
+    assert "managers-only secret MO" in listing.get_data(as_text=True)
+    assert client.get(f"/concerns/{concern.id}").status_code == 200
+
+
+def test_cannot_invite_other_company_user_to_project(client, db_session):
+    _, project_a, _, _ = _company_project_contract(db_session, "IA")
+    company_b, _, _, _ = _company_project_contract(db_session, "IB")
+    admin_a = _user(db_session, "inv_a", "company_admin", project_a.company_id)
+    user_b = _user(db_session, "inv_b", "company_user", company_b.id)
+
+    _login(client, admin_a.email)
+    response = client.post(
+        f"/projects/{project_a.id}/invite",
+        data={"email": user_b.email, "role": "member"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "همان شرکت" not in html
+    assert "قابل دعوت به این پروژه نیست" in html
+    assert (
+        ProjectMembership.query.filter_by(project_id=project_a.id, user_id=user_b.id).first()
+        is None
+    )
+

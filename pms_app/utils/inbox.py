@@ -57,7 +57,11 @@ def visible_concerns_query(user):
     cid = getattr(user, "company_id", None)
     if cid is None:
         return query.filter(Concern.id == -1)
-    query = query.filter(Concern.company_id == cid)
+    query = (
+        query.outerjoin(Project, Concern.project_id == Project.id)
+        .filter(Concern.company_id == cid)
+        .filter(or_(Concern.project_id.is_(None), Project.company_id == cid))
+    )
     if getattr(user, "is_company_admin", False):
         return query
 
@@ -81,15 +85,13 @@ def visible_concerns_query(user):
         conditions.append(
             db.and_(Concern.visibility == "project", Concern.project_id.in_(member_project_ids))
         )
-    if manager_project_ids or (hasattr(user, "has_role") and user.has_role("manager")):
-        conditions.append(Concern.visibility == "managers_only")
-        if manager_project_ids:
-            conditions.append(
-                db.and_(
-                    Concern.visibility == "managers_only",
-                    or_(Concern.project_id.in_(manager_project_ids), Concern.project_id.is_(None)),
-                )
+    if manager_project_ids:
+        conditions.append(
+            db.and_(
+                Concern.visibility == "managers_only",
+                Concern.project_id.in_(manager_project_ids),
             )
+        )
     return query.filter(or_(*conditions))
 
 
