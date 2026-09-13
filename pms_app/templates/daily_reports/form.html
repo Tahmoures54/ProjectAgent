@@ -2,108 +2,341 @@
 {% block title %}{{ title }} | Project Agent{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6" dir="rtl">
-  <div>
-    <nav class="flex items-center gap-2 text-xs text-slate-500 mb-2">
-      <a href="{{ url_for('daily_reports.project_list', project_id=project.id) }}" class="hover:text-brand-600">گزارش‌های روزانه</a>
-      <i class="fas fa-chevron-left text-[8px]"></i>
-      <span class="text-brand-600">{{ title }}</span>
-    </nav>
-    <h1 class="text-2xl font-black text-slate-800 dark:text-white">{{ title }}</h1>
-    <p class="text-sm text-slate-500 mt-1">{{ project.project_name }} ({{ project.project_code }})</p>
+{% set items = contract_items or [] %}
+<div class="max-w-5xl mx-auto space-y-6" dir="rtl" x-data="dailyReportForm()">
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+    <div>
+      <nav class="flex items-center gap-2 text-xs text-slate-500 mb-2">
+        <a href="{{ url_for('daily_reports.project_list', project_id=project.id) }}" class="hover:text-brand-600">گزارش‌های روزانه</a>
+        <i class="fas fa-chevron-left text-[8px]"></i>
+        <span class="text-brand-600">{{ title }}</span>
+      </nav>
+      <h1 class="text-2xl md:text-3xl font-black text-slate-800 dark:text-white">{{ title }}</h1>
+      <p class="text-sm text-slate-500 mt-1">{{ project.project_name }} <span class="font-mono text-brand-600">({{ project.project_code }})</span></p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{{ url_for('daily_reports.template_xlsx', project_id=project.id) }}"
+         class="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-bold hover:border-brand-400">
+        <i class="fas fa-file-excel text-emerald-600"></i> دانلود قالب اکسل
+      </a>
+      <button type="button" @click="importOpen = true"
+              class="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-500/20">
+        <i class="fas fa-file-import"></i> ورود از اکسل
+      </button>
+    </div>
   </div>
 
-  <form method="post" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-6 sm:p-8 space-y-6 shadow-sm">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="pa-kpi pa-kpi-brand">
+      <span>ثبت سریع</span>
+      <strong>فرم کارگاهی</strong>
+    </div>
+    <div class="pa-kpi pa-kpi-emerald">
+      <span>ایمپورت</span>
+      <strong>Excel چندروزه</strong>
+    </div>
+    <div class="pa-kpi pa-kpi-amber">
+      <span>گردش کار</span>
+      <strong>تأیید مدیر</strong>
+    </div>
+    <div class="pa-kpi pa-kpi-violet">
+      <span>اعمال پیشرفت</span>
+      <strong>پس از Approve</strong>
+    </div>
+  </div>
+
+  <form method="post" class="pa-card p-5 sm:p-8 space-y-8" @submit="syncTables()">
     {{ form.hidden_tag() }}
+    {{ form.manpower_details_raw(class="hidden", **{'x-ref': 'manpowerRaw'}) }}
+    {{ form.equipment_details_raw(class="hidden", **{'x-ref': 'equipmentRaw'}) }}
+    {{ form.progress_updates_raw(class="hidden", **{'x-ref': 'progressRaw'}) }}
+    {{ form.materials_received_raw(class="hidden", **{'x-ref': 'materialsRaw'}) }}
+    {{ form.engineering_outputs_raw(class="hidden", **{'x-ref': 'engineeringRaw'}) }}
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-      <div>
-        <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.report_date.label.text }} *</label>
-        {{ form.report_date(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
-        {% for e in form.report_date.errors %}<p class="text-xs text-rose-500 mt-1">{{ e }}</p>{% endfor %}
+    <section>
+      <h3 class="pa-section-title"><i class="fas fa-calendar-day text-brand-500"></i> مشخصات روز</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <label class="pa-field">
+          <span>{{ form.report_date.label.text }} *</span>
+          {{ form.report_date(class="pa-input") }}
+          {% for e in form.report_date.errors %}<em>{{ e }}</em>{% endfor %}
+        </label>
+        <label class="pa-field">
+          <span>{{ form.epc_phase.label.text }}</span>
+          {{ form.epc_phase(class="pa-input") }}
+        </label>
+        <label class="pa-field">
+          <span>{{ form.shift.label.text }}</span>
+          {{ form.shift(class="pa-input") }}
+        </label>
+        <label class="pa-field">
+          <span>{{ form.work_area.label.text }}</span>
+          {{ form.work_area(class="pa-input", placeholder="مثلاً ناحیه مخازن / واحد ۳") }}
+        </label>
+        <label class="pa-field">
+          <span>{{ form.weather.label.text }}</span>
+          {{ form.weather(class="pa-input") }}
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="pa-field">
+            <span>حداقل دما</span>
+            {{ form.temperature_min(class="pa-input") }}
+          </label>
+          <label class="pa-field">
+            <span>حداکثر دما</span>
+            {{ form.temperature_max(class="pa-input") }}
+          </label>
+        </div>
       </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.weather.label.text }}</label>
-        {{ form.weather(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.temperature_min.label.text }}</label>
-        {{ form.temperature_min(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.temperature_max.label.text }}</label>
-        {{ form.temperature_max(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
-      </div>
-    </div>
+    </section>
 
-    <div class="border-t border-slate-100 dark:border-slate-700 pt-5">
-      <h3 class="font-black text-slate-800 dark:text-white mb-3 flex items-center gap-2"><i class="fas fa-users text-brand-500"></i> نیروی انسانی</h3>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="pa-section-title mb-0"><i class="fas fa-users text-sky-500"></i> نیروی انسانی</h3>
+        <button type="button" class="pa-chip-btn" @click="manpower.push({role:'', count:0})"><i class="fas fa-plus"></i> ردیف</button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
+        <label class="pa-field">
+          <span>جمع نفرات (اگر خالی باشد از جدول حساب می‌شود)</span>
+          {{ form.manpower_total(class="pa-input", **{'x-model':'manpowerTotal'}) }}
+        </label>
+      </div>
+      <div class="overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-700">
+        <table class="pa-grid">
+          <thead><tr><th>نقش / رسته</th><th class="w-28">تعداد</th><th class="w-12"></th></tr></thead>
+          <tbody>
+            <template x-for="(row, i) in manpower" :key="i">
+              <tr>
+                <td><input class="pa-input" x-model="row.role" placeholder="جوشکار"></td>
+                <td><input class="pa-input" type="number" min="0" x-model.number="row.count"></td>
+                <td><button type="button" class="text-rose-400" @click="manpower.splice(i,1)"><i class="fas fa-times"></i></button></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="pa-section-title mb-0"><i class="fas fa-truck-monster text-amber-500"></i> ماشین‌آلات</h3>
+        <button type="button" class="pa-chip-btn" @click="equipment.push({name:'', count:1, hours:8})"><i class="fas fa-plus"></i> ردیف</button>
+      </div>
+      <div class="overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-700">
+        <table class="pa-grid">
+          <thead><tr><th>نام</th><th class="w-24">تعداد</th><th class="w-28">ساعت کار</th><th class="w-12"></th></tr></thead>
+          <tbody>
+            <template x-for="(row, i) in equipment" :key="i">
+              <tr>
+                <td><input class="pa-input" x-model="row.name" placeholder="بیل مکانیکی"></td>
+                <td><input class="pa-input" type="number" min="0" x-model.number="row.count"></td>
+                <td><input class="pa-input" type="number" min="0" step="0.5" x-model.number="row.hours"></td>
+                <td><button type="button" class="text-rose-400" @click="equipment.splice(i,1)"><i class="fas fa-times"></i></button></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h3 class="pa-section-title"><i class="fas fa-hammer text-emerald-500"></i> کارهای انجام‌شده</h3>
+      {{ form.work_performed(class="pa-input min-h-[8rem]") }}
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between mb-3">
         <div>
-          <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.manpower_total.label.text }}</label>
-          {{ form.manpower_total(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
+          <h3 class="pa-section-title mb-0"><i class="fas fa-chart-line text-indigo-500"></i> پیشرفت آیتم‌ها</h3>
+          <p class="text-xs text-slate-400 mt-1">فقط پس از تأیید مدیر روی WBS اعمال می‌شود.</p>
         </div>
-        <div class="sm:col-span-2">
-          <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.manpower_details_raw.label.text }}</label>
-          {{ form.manpower_details_raw(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm font-mono") }}
-        </div>
+        <button type="button" class="pa-chip-btn" @click="progress.push({contract_item_id:'', progress_percent:'', quantity_done:'', notes:''})"><i class="fas fa-plus"></i> ردیف</button>
       </div>
-    </div>
+      <div class="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-700">
+        <table class="pa-grid">
+          <thead><tr><th>آیتم / WBS</th><th class="w-28">درصد</th><th class="w-28">مقدار</th><th>یادداشت</th><th class="w-12"></th></tr></thead>
+          <tbody>
+            <template x-for="(row, i) in progress" :key="i">
+              <tr>
+                <td>
+                  <select class="pa-input" x-model="row.contract_item_id">
+                    <option value="">انتخاب آیتم</option>
+                    <template x-for="it in items" :key="it.id">
+                      <option :value="it.id" x-text="(it.wbs ? it.wbs+' — ' : '') + it.title"></option>
+                    </template>
+                  </select>
+                </td>
+                <td><input class="pa-input" type="number" min="0" max="100" step="0.1" x-model="row.progress_percent"></td>
+                <td><input class="pa-input" type="number" min="0" step="0.01" x-model="row.quantity_done"></td>
+                <td><input class="pa-input" x-model="row.notes" placeholder="شرح کار آیتم"></td>
+                <td><button type="button" class="text-rose-400" @click="progress.splice(i,1)"><i class="fas fa-times"></i></button></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-    <div class="border-t border-slate-100 dark:border-slate-700 pt-5">
-      <h3 class="font-black text-slate-800 dark:text-white mb-3 flex items-center gap-2"><i class="fas fa-truck text-amber-500"></i> ماشین‌آلات</h3>
-      {{ form.equipment_details_raw(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm font-mono") }}
-    </div>
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="pa-section-title mb-0"><i class="fas fa-drafting-compass text-sky-600"></i> خروجی‌های مهندسی</h3>
+        <button type="button" class="pa-chip-btn" @click="engineering.push({doc_no:'', title:'', status:''})"><i class="fas fa-plus"></i> ردیف</button>
+      </div>
+      <p class="text-xs text-slate-400 mb-3">مدارک صادرشده امروز: IFR / IFA / IFC، ایزومتریک، دیتا شیت و …</p>
+      <div class="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-700">
+        <table class="pa-grid">
+          <thead><tr><th class="w-36">شماره مدرک</th><th>عنوان</th><th class="w-36">وضعیت</th><th class="w-12"></th></tr></thead>
+          <tbody>
+            <template x-for="(row, i) in engineering" :key="i">
+              <tr>
+                <td><input class="pa-input" x-model="row.doc_no" placeholder="PID-001"></td>
+                <td><input class="pa-input" x-model="row.title" placeholder="P&amp;ID واحد ۳"></td>
+                <td><input class="pa-input" x-model="row.status" placeholder="IFC / Issued"></td>
+                <td><button type="button" class="text-rose-400" @click="engineering.splice(i,1)"><i class="fas fa-times"></i></button></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-    <div class="border-t border-slate-100 dark:border-slate-700 pt-5">
-      <h3 class="font-black text-slate-800 dark:text-white mb-3 flex items-center gap-2"><i class="fas fa-hammer text-emerald-500"></i> کارهای انجام‌شده</h3>
-      {{ form.work_performed(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
-    </div>
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="pa-section-title mb-0"><i class="fas fa-boxes-stacked text-teal-500"></i> مصالح واردشده (تدارکات)</h3>
+        <button type="button" class="pa-chip-btn" @click="materials.push({name:'', qty:'', unit:'', vendor:''})"><i class="fas fa-plus"></i> ردیف</button>
+      </div>
+      <div class="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-700">
+        <table class="pa-grid">
+          <thead><tr><th>نام</th><th class="w-28">مقدار</th><th class="w-24">واحد</th><th>تأمین‌کننده</th><th class="w-12"></th></tr></thead>
+          <tbody>
+            <template x-for="(row, i) in materials" :key="i">
+              <tr>
+                <td><input class="pa-input" x-model="row.name" placeholder="میلگرد / فلنج"></td>
+                <td><input class="pa-input" type="number" min="0" step="0.01" x-model="row.qty"></td>
+                <td><input class="pa-input" x-model="row.unit" placeholder="تن"></td>
+                <td><input class="pa-input" x-model="row.vendor"></td>
+                <td><button type="button" class="text-rose-400" @click="materials.splice(i,1)"><i class="fas fa-times"></i></button></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-    <div class="border-t border-slate-100 dark:border-slate-700 pt-5">
-      <h3 class="font-black text-slate-800 dark:text-white mb-3 flex items-center gap-2"><i class="fas fa-chart-line text-indigo-500"></i> پیشرفت آیتم‌ها (پیشنهادی)</h3>
-      <p class="text-xs text-slate-400 mb-2">فقط پس از تأیید نهایی مدیران روی سیستم اعمال می‌شود.</p>
-      {{ form.progress_updates_raw(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm font-mono") }}
-    </div>
+    <section class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <label class="pa-field sm:col-span-2">
+        <span>مشکلات، تأخیرات و موانع</span>
+        {{ form.issues_delays(class="pa-input") }}
+      </label>
+      <label class="pa-field">
+        <span>حوادث ایمنی</span>
+        {{ form.hse_incidents(class="pa-input") }}
+      </label>
+      <label class="pa-field">
+        <span>مشاهدات HSE</span>
+        {{ form.hse_observations(class="pa-input") }}
+      </label>
+      <label class="pa-field">
+        <span>Near Miss</span>
+        {{ form.near_miss_count(class="pa-input") }}
+      </label>
+      <label class="pa-field">
+        <span>ساعت توقف کار</span>
+        {{ form.lost_time_hours(class="pa-input") }}
+      </label>
+      <label class="pa-field sm:col-span-2">
+        <span>بازدیدکنندگان / جلسات</span>
+        {{ form.visitors_meetings(class="pa-input") }}
+      </label>
+      <label class="pa-field sm:col-span-2">
+        <span>یادداشت</span>
+        {{ form.notes(class="pa-input") }}
+      </label>
+    </section>
 
-    <div class="border-t border-slate-100 dark:border-slate-700 pt-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
-      <div class="sm:col-span-2">
-        <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.issues_delays.label.text }}</label>
-        {{ form.issues_delays(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.hse_incidents.label.text }}</label>
-        {{ form.hse_incidents(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.hse_observations.label.text }}</label>
-        {{ form.hse_observations(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.near_miss_count.label.text }}</label>
-        {{ form.near_miss_count(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.visitors_meetings.label.text }}</label>
-        {{ form.visitors_meetings(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
-      </div>
-      <div class="sm:col-span-2">
-        <label class="block text-xs font-bold text-slate-500 mb-1.5">{{ form.notes.label.text }}</label>
-        {{ form.notes(class="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm") }}
-      </div>
-    </div>
-
-    <div class="flex flex-wrap gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
-      <button type="submit" name="action" value="save"
-              class="px-6 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 font-bold text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">
+    <div class="flex flex-wrap gap-3 pt-2 border-t border-slate-100 dark:border-slate-700">
+      <button type="submit" name="form_action" value="save" class="px-6 py-3 rounded-2xl border border-slate-200 dark:border-slate-600 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700">
         ذخیره پیش‌نویس
       </button>
-      <button type="submit" name="action" value="submit"
-              class="px-6 py-2.5 rounded-2xl bg-brand-600 text-white font-bold text-sm hover:bg-brand-700 shadow-lg shadow-brand-500/20">
+      <button type="submit" name="form_action" value="submit" class="px-6 py-3 rounded-2xl bg-brand-600 text-white font-bold text-sm hover:bg-brand-700 shadow-lg shadow-brand-500/20">
         <i class="fas fa-paper-plane ml-1"></i> ارسال برای تأیید
       </button>
-      <a href="{{ url_for('daily_reports.project_list', project_id=project.id) }}" class="px-6 py-2.5 rounded-2xl text-sm text-slate-500 hover:text-slate-700">انصراف</a>
+      <a href="{{ url_for('daily_reports.project_list', project_id=project.id) }}" class="px-6 py-3 rounded-2xl text-sm text-slate-500">انصراف</a>
     </div>
   </form>
+
+  <div x-show="importOpen" x-cloak class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/40" @keydown.escape.window="importOpen=false">
+    <div class="w-full max-w-lg pa-card p-6" @click.outside="importOpen=false">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-black text-lg">ورود گزارش از اکسل</h3>
+        <button type="button" @click="importOpen=false" class="text-slate-400"><i class="fas fa-times"></i></button>
+      </div>
+      <p class="text-sm text-slate-500 mb-4">قالب چندبرگه را دانلود کنید، روزها را پر کنید و همین‌جا بارگذاری نمایید. تاریخ خورشیدی و میلادی هر دو قبول است.</p>
+      <form method="post" action="{{ url_for('daily_reports.import_xlsx', project_id=project.id) }}" enctype="multipart/form-data" class="space-y-4">
+        {% if import_form is defined %}{{ import_form.hidden_tag() }}{% endif %}
+        <input type="file" name="file" accept=".xlsx,.xls" required class="block w-full text-sm">
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="submit_after" value="y"> پس از ورود، برای تأیید ارسال شود
+        </label>
+        <button class="w-full py-3 rounded-2xl bg-emerald-600 text-white font-bold">ورود فایل</button>
+      </form>
+    </div>
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function parseRows(raw, fallback) {
+  if (Array.isArray(raw) && raw.length) return raw;
+  if (!raw) return fallback;
+  if (typeof raw === 'string') {
+    const t = raw.trim();
+    if (!t) return fallback;
+    try {
+      const v = JSON.parse(t);
+      if (Array.isArray(v) && v.length) return v;
+    } catch (e) {
+      return t.split('\n').filter(Boolean).map((line) => {
+        const p = line.split(/[|,]/).map(s => s.trim());
+        return { role: p[0], count: Number(p[1] || 0), name: p[0], hours: Number(p[2] || 0), notes: p[3] || '' };
+      });
+    }
+  }
+  return fallback;
+}
+function dailyReportForm() {
+  const boot = window.DAILY_REPORT_BOOT || {};
+  return {
+    importOpen: false,
+    items: boot.items || [],
+    manpower: parseRows(boot.manpower, [{role:'', count:0}]),
+    equipment: parseRows(boot.equipment, [{name:'', count:1, hours:8}]),
+    progress: parseRows(boot.progress, [{contract_item_id:'', progress_percent:'', quantity_done:'', notes:''}]),
+    materials: parseRows(boot.materials, [{name:'', qty:'', unit:'', vendor:''}]),
+    engineering: parseRows(boot.engineering, [{doc_no:'', title:'', status:''}]),
+    manpowerTotal: boot.manpowerTotal || 0,
+    syncTables() {
+      const mp = this.manpower.filter(r => (r.role || '').trim());
+      this.$refs.manpowerRaw.value = JSON.stringify(mp);
+      this.$refs.equipmentRaw.value = JSON.stringify(this.equipment.filter(r => (r.name || '').trim()));
+      this.$refs.progressRaw.value = JSON.stringify(this.progress.filter(r => r.contract_item_id));
+      this.$refs.materialsRaw.value = JSON.stringify(this.materials.filter(r => (r.name || '').trim()));
+      this.$refs.engineeringRaw.value = JSON.stringify(this.engineering.filter(r => (r.title || r.doc_no || '').trim()));
+      const total = mp.reduce((s, r) => s + Number(r.count || 0), 0);
+      const el = document.querySelector('[name=manpower_total]');
+      if (el && (!el.value || Number(el.value) === 0) && total) el.value = total;
+    }
+  };
+}
+window.DAILY_REPORT_BOOT = {
+  manpower: {{ (form.manpower_details_raw.data or '') | tojson }},
+  equipment: {{ (form.equipment_details_raw.data or '') | tojson }},
+  progress: {{ (form.progress_updates_raw.data or '') | tojson }},
+  materials: {{ (form.materials_received_raw.data or '') | tojson }},
+  engineering: {{ (form.engineering_outputs_raw.data or '') | tojson }},
+  manpowerTotal: {{ (form.manpower_total.data or 0) | tojson }},
+  items: {{ (contract_items or []) | tojson }}
+};
+</script>
 {% endblock %}

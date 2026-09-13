@@ -309,6 +309,7 @@ def _ensure_db_schema_and_seed(app: Flask, *, cfg: str) -> None:
                 )
 
             _ensure_users_2fa_columns(db)
+            _ensure_daily_report_epc_columns(db)
             ensure_rbac_seed()
 
     except Exception:
@@ -336,6 +337,37 @@ def _ensure_users_2fa_columns(db) -> None:
         stmts.append("ALTER TABLE users ADD COLUMN two_fa_secret VARCHAR(255)")
     if "two_fa_backup_hashes" not in columns:
         stmts.append("ALTER TABLE users ADD COLUMN two_fa_backup_hashes TEXT")
+    if not stmts:
+        return
+    with db.engine.begin() as conn:
+        for sql in stmts:
+            conn.execute(text(sql))
+
+
+def _ensure_daily_report_epc_columns(db) -> None:
+    """Add EPC daily-report columns on existing databases without Alembic."""
+    from sqlalchemy import inspect as sa_inspect, text
+
+    inspector = sa_inspect(db.engine)
+    if "daily_reports" not in set(inspector.get_table_names()):
+        return
+    columns = {col["name"] for col in inspector.get_columns("daily_reports")}
+    dialect = db.engine.dialect.name
+    json_type = "TEXT" if dialect == "sqlite" else "JSON"
+    numeric = "NUMERIC(8, 2)" if dialect != "sqlite" else "NUMERIC"
+    specs = [
+        ("epc_phase", "VARCHAR(40)"),
+        ("work_area", "VARCHAR(120)"),
+        ("shift", "VARCHAR(30)"),
+        ("lost_time_hours", numeric),
+        ("materials_received", json_type),
+        ("engineering_outputs", json_type),
+    ]
+    stmts = [
+        f"ALTER TABLE daily_reports ADD COLUMN {name} {ddl}"
+        for name, ddl in specs
+        if name not in columns
+    ]
     if not stmts:
         return
     with db.engine.begin() as conn:

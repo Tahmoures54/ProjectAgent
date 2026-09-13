@@ -259,3 +259,202 @@ body {
     padding: 0.5rem;
   }
 }
+
+/* =============================================================
+   8. Project Agent cards / daily report / EPC controls
+   ============================================================= */
+[x-cloak] { display: none !important; }
+
+.pa-card {
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 30px -18px rgba(15, 23, 42, 0.35);
+}
+
+.dark .pa-card {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: none;
+}
+
+.pa-report-card {
+  display: block;
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 1.5rem;
+  padding: 1.25rem;
+  text-decoration: none !important;
+  box-shadow: 0 8px 24px -18px rgba(15, 23, 42, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.pa-report-card:hover {
+  transform: translateY(-3px);
+  border-color: #a8e0ec;
+  box-shadow: 0 18px 40px -24px rgba(14, 127, 155, 0.55);
+}
+
+.dark .pa-report-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.pa-kpi {
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 1.25rem;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pa-kpi span {
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+}
+
+.pa-kpi strong {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.dark .pa-kpi { background: #1e293b; border-color: #334155; }
+.dark .pa-kpi strong { color: #f8fafc; }
+
+.pa-kpi-brand { background: linear-gradient(180deg, #eef8fb, #ffffff); border-color: #d5f0f6; }
+.pa-kpi-emerald { background: linear-gradient(180deg, #ecfdf5, #ffffff); border-color: #a7f3d0; }
+.pa-kpi-amber { background: linear-gradient(180deg, #fffbeb, #ffffff); border-color: #fde68a; }
+.pa-kpi-rose { background: linear-gradient(180deg, #fff1f2, #ffffff); border-color: #fecdd3; }
+.pa-kpi-violet { background: linear-gradient(180deg, #f5f3ff, #ffffff); border-color: #ddd6fe; }
+
+.pa-input {
+  width: 100%;
+  border-radius: 0.9rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.pa-input:focus {
+  border-color: #1a9bb3;
+  box-shadow: 0 0 0 3px rgba(26, 155, 179, 0.15);
+  background: #fff;
+}
+
+.dark .pa-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+.pa-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+}
+
+.pa-field > span {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.pa-field em {
+  font-style: normal;
+  color: #f43f5e;
+  font-size: 12px;
+}
+
+.pa-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 900;
+  margin-bottom: 0.85rem;
+  color: #0f172a;
+}
+
+.dark .pa-section-title { color: #f8fafc; }
+
+.pa-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0e7f9b;
+  background: #eef8fb;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+}
+
+.pa-grid {
+  width: 100%;
+  font-size: 13px;
+  border-collapse: collapse;
+}
+
+.pa-grid th {
+  text-align: right;
+  font-size: 11px;
+  color: #64748b;
+  background: #f8fafc;
+  padding: 0.6rem 0.75rem;
+}
+
+.dark .pa-grid th { background: #0f172a; color: #94a3b8; }
+
+.pa-grid td {
+  padding: 0.45rem 0.5rem;
+  border-top: 1px solid #eef2f7;
+}
+
+.dark .pa-grid td { border-color: #334155; }
+
+.pa-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.dark .pa-pill { background: #334155; color: #cbd5e1; }
+.pa-pill-amber { background: #fffbeb; color: #b45309; }
+
+.pa-empty {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: #94a3b8;
+  background: #fff;
+  border: 1px dashed #e2e8f0;
+  border-radius: 1.5rem;
+}
+
+.dark .pa-empty { background: #1e293b; border-color: #334155; }
+
+.pa-status {
+  display: inline-flex;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.pa-status-approved { background: #d1fae5; color: #047857; }
+.pa-status-rejected { background: #ffe4e6; color: #be123c; }
+.pa-status-submitted, .pa-status-under_review { background: #fef3c7; color: #b45309; }
+.pa-status-needs_revision { background: #ffedd5; color: #c2410c; }
+.pa-status-draft { background: #f1f5f9; color: #475569; }

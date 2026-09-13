@@ -102,6 +102,17 @@ class DailyReport(db.Model):
     # یادداشت کلی
     notes = db.Column(db.Text, nullable=True)
 
+    # ——— فیلدهای کنترل پروژه EPC ———
+    # engineering | procurement | construction | mixed
+    epc_phase = db.Column(db.String(40), nullable=True, index=True)
+    work_area = db.Column(db.String(120), nullable=True)
+    shift = db.Column(db.String(30), nullable=True)  # day | night | full
+    lost_time_hours = db.Column(db.Numeric(8, 2), nullable=True)
+    # [{name, qty, unit, vendor}]
+    materials_received = db.Column(db.JSON, nullable=True)
+    # [{doc_no, title, status}]
+    engineering_outputs = db.Column(db.JSON, nullable=True)
+
     # آیا پیشرفت روی آیتم‌ها اعمال شده؟ (فقط بعد از approved)
     progress_applied = db.Column(db.Boolean, nullable=False, default=False)
 
@@ -157,6 +168,31 @@ class DailyReport(db.Model):
         "needs_revision": "orange",
     }
 
+    WEATHER_LABELS = {
+        "sunny": "آفتابی",
+        "partly_cloudy": "نیمه‌ابری",
+        "cloudy": "ابری",
+        "rainy": "بارانی",
+        "stormy": "طوفانی",
+        "snowy": "برفی",
+        "foggy": "مه",
+        "windy": "باد شدید",
+        "other": "سایر",
+    }
+
+    SHIFT_LABELS = {
+        "day": "روزکار",
+        "night": "شب‌کار",
+        "full": "تمام‌وقت / دو شیفت",
+    }
+
+    EPC_PHASE_LABELS = {
+        "engineering": "مهندسی (E)",
+        "procurement": "تدارکات (P)",
+        "construction": "اجرا (C)",
+        "mixed": "ترکیبی EPC",
+    }
+
     @property
     def status_label(self) -> str:
         return self.STATUS_LABELS.get(self.status, self.status)
@@ -164,6 +200,24 @@ class DailyReport(db.Model):
     @property
     def status_color(self) -> str:
         return self.STATUS_COLORS.get(self.status, "slate")
+
+    @property
+    def weather_label(self) -> str:
+        if not self.weather:
+            return "—"
+        return self.WEATHER_LABELS.get(self.weather, self.weather)
+
+    @property
+    def shift_label(self) -> str:
+        if not self.shift:
+            return "—"
+        return self.SHIFT_LABELS.get(self.shift, self.shift)
+
+    @property
+    def epc_phase_label(self) -> str:
+        if not self.epc_phase:
+            return "—"
+        return self.EPC_PHASE_LABELS.get(self.epc_phase, self.epc_phase)
 
     @property
     def is_editable(self) -> bool:

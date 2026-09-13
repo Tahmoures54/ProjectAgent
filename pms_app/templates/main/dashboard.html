@@ -49,21 +49,24 @@
     </header>
   </div>
 
-  {# دسترسی سریع — جذب و استفاده واقعی #}
-  <section class="grid grid-cols-2 md:grid-cols-4 gap-3" aria-label="دسترسی سریع">
-    <a href="{{ url_for('projects.projects') }}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-indigo-300 transition shadow-sm">
+  <section class="grid grid-cols-2 md:grid-cols-5 gap-3" aria-label="دسترسی سریع">
+    <a href="{{ url_for('projects.projects') }}" class="pa-report-card flex items-center gap-3 p-4">
       <span class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center"><i class="fas fa-folder-open"></i></span>
       <span class="text-sm font-bold text-gray-800 dark:text-white">پروژه‌ها</span>
     </a>
-    <a href="{{ url_for('daily_reports.index') }}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-orange-300 transition shadow-sm">
+    <a href="{{ url_for('daily_reports.index') }}" class="pa-report-card flex items-center gap-3 p-4">
       <span class="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-900/30 text-orange-600 flex items-center justify-center"><i class="fas fa-clipboard-list"></i></span>
       <span class="text-sm font-bold text-gray-800 dark:text-white">گزارش روزانه</span>
     </a>
-    <a href="{{ url_for('concerns.index') }}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-rose-300 transition shadow-sm">
+    <a href="{{ url_for('concerns.index') }}" class="pa-report-card flex items-center gap-3 p-4">
       <span class="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/30 text-rose-600 flex items-center justify-center"><i class="fas fa-triangle-exclamation"></i></span>
       <span class="text-sm font-bold text-gray-800 dark:text-white">کانسرن‌ها</span>
     </a>
-    <a href="{{ url_for('billing.pricing') }}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-emerald-300 transition shadow-sm">
+    <a href="{{ url_for('reports.reports') }}" class="pa-report-card flex items-center gap-3 p-4">
+      <span class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-900/30 text-sky-600 flex items-center justify-center"><i class="fas fa-chart-pie"></i></span>
+      <span class="text-sm font-bold text-gray-800 dark:text-white">مرکز گزارش</span>
+    </a>
+    <a href="{{ url_for('billing.pricing') }}" class="pa-report-card flex items-center gap-3 p-4 col-span-2 md:col-span-1">
       <span class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center"><i class="fas fa-crown"></i></span>
       <span class="text-sm font-bold text-gray-800 dark:text-white">پلن‌ها</span>
     </a>
@@ -164,7 +167,7 @@
     <div class="px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50">
       <div class="flex items-center gap-3">
         <div class="w-2 h-6 bg-indigo-600 rounded-full"></div>
-        <h2 class="text-lg font-bold text-gray-800 dark:text-white">آخرین فعالیت‌های پروژه</h2>
+        <h2 class="text-lg font-bold text-gray-800 dark:text-white">پرتفوی پروژه‌ها</h2>
       </div>
       {% if can_manage_projects %}
       <a href="{{ url_for('projects.project_new') }}" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-xl transition-all shadow-md shadow-indigo-200 dark:shadow-none">
@@ -174,81 +177,50 @@
       {% endif %}
     </div>
 
-    <div class="overflow-x-auto">
-      <table class="w-full text-right">
-        <thead>
-          <tr class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900/50">
-            <th class="px-6 py-4">شناسه</th>
-            <th class="px-6 py-4">نام پروژه و صنعت</th>
-            <th class="px-6 py-4">وضعیت</th>
-            <th class="px-6 py-4">پیشرفت</th>
-            <th class="px-6 py-4 text-left">عملیات</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-          {% for p in projects %}
-          <tr class="group hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors">
-            <td class="px-6 py-4 text-sm font-mono text-indigo-600 dark:text-indigo-400">#{{ p.project_code or '---' }}</td>
-            <td class="px-6 py-4">
-              <div class="text-sm font-bold text-gray-800 dark:text-white">{{ p.project_name }}</div>
-              <div class="text-xs text-gray-500 dark:text-gray-500">{{ p.industry or 'عمومی' }}</div>
-            </td>
-            <td class="px-6 py-4">
-              {% set status_map = {
-                'active': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-                'on_hold': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-                'closed': 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400'
-              } %}
-              <span class="px-2.5 py-1 rounded-lg text-xs font-bold {{ status_map.get(p.status, 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400') }}">
-                {{ p.status_title or 'نامشخص' }}
-              </span>
-            </td>
-            <td class="px-6 py-4 w-48">
-              <div class="flex items-center gap-2">
-                <div class="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div class="h-full bg-indigo-500 rounded-full" style="width: {{ p.progress|default(0) }}%"></div>
-                </div>
-                <span class="text-xs font-medium text-gray-500">{{ p.progress|default(0) }}%</span>
-              </div>
-            </td>
-            <td class="px-6 py-4 text-left whitespace-nowrap">
-              <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <a href="{{ url_for('projects.project_view', project_id=p.id) }}" class="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 rounded-lg transition-colors" title="مشاهده">
-                  <i class="fas fa-eye"></i>
-                </a>
-                <a href="{{ url_for('daily_reports.project_list', project_id=p.id) }}" class="p-2 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/50 rounded-lg transition-colors" title="گزارش روزانه">
-                  <i class="fas fa-clipboard-list"></i>
-                </a>
-                <a href="{{ url_for('concerns.index', project_id=p.id) }}" class="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/50 rounded-lg transition-colors" title="کانسرن‌ها">
-                  <i class="fas fa-triangle-exclamation"></i>
-                </a>
-                <a href="{{ url_for('contracts.contracts', project_id=p.id) }}" class="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 rounded-lg transition-colors" title="قراردادها">
-                  <i class="fas fa-file-invoice-dollar"></i>
-                </a>
-              </div>
-            </td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="5" class="px-6 py-20 text-center">
-                <div class="flex flex-col items-center justify-center">
-                    <div class="w-20 h-20 bg-gray-50 dark:bg-gray-700/50 rounded-full flex items-center justify-center text-gray-300 dark:text-gray-600 mb-4">
-                        <i class="fas fa-folder-open text-4xl"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-gray-800 dark:text-white">هنوز پروژه‌ای ندارید</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto mt-2">اولین پروژه را بسازید، تیم را دعوت کنید، سپس گزارش روزانه و کانسرن را فعال کنید.</p>
-                    {% if can_manage_projects %}
-                    <a href="{{ url_for('projects.project_new') }}" class="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-bold transition-all">
-                        ایجاد اولین پروژه
-                    </a>
-                    {% endif %}
-                </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    {% if projects %}
+    <div class="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+      {% for p in projects %}
+      <article class="pa-report-card">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-[10px] font-black tracking-widest text-indigo-500 uppercase">{{ p.project_code or '—' }}</p>
+            <h3 class="font-black text-gray-800 dark:text-white truncate">{{ p.project_name }}</h3>
+            <p class="text-xs text-gray-400 mt-1">{{ p.industry or 'عمومی' }}</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg text-[10px] font-black
+            {% if p.status == 'active' %}bg-emerald-100 text-emerald-700{% elif p.status == 'on_hold' %}bg-amber-100 text-amber-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+            {{ p.status_title or 'نامشخص' }}
+          </span>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+          <div class="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div class="h-full bg-indigo-500 rounded-full" style="width: {{ p.progress|default(0) }}%"></div>
+          </div>
+          <span class="text-xs font-black text-gray-600">{{ "%.0f"|format(p.progress|default(0)) }}%</span>
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <a href="{{ url_for('projects.project_view', project_id=p.id) }}" class="text-center py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold no-underline">کنترل</a>
+          <a href="{{ url_for('projects.epc_controls', project_id=p.id) }}" class="text-center py-2 rounded-xl bg-slate-50 dark:bg-slate-700 text-xs font-bold no-underline">EPC</a>
+        </div>
+      </article>
+      {% endfor %}
     </div>
+    {% else %}
+    <div class="px-6 py-20 text-center">
+      <div class="flex flex-col items-center justify-center">
+        <div class="w-20 h-20 bg-gray-50 dark:bg-gray-700/50 rounded-full flex items-center justify-center text-gray-300 dark:text-gray-600 mb-4">
+          <i class="fas fa-folder-open text-4xl"></i>
+        </div>
+        <h3 class="text-lg font-bold text-gray-800 dark:text-white">هنوز پروژه‌ای ندارید</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto mt-2">اولین پروژه را بسازید، تیم را دعوت کنید، سپس گزارش روزانه و کانسرن را فعال کنید.</p>
+        {% if can_manage_projects %}
+        <a href="{{ url_for('projects.project_new') }}" class="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-bold transition-all">
+          ایجاد اولین پروژه
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
 
     {% if pagination and pagination.pages > 1 %}
     <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">

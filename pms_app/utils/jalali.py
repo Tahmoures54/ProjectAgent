@@ -157,10 +157,14 @@ def parse_jalali(text: str) -> Optional["jdatetime.date"]:
     try:
         if len(parts) == 3:
             y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
+            if y >= 1700:
+                return None
             return jdatetime.date(y, m, d)
         digits = text.replace("/", "")
         if len(digits) == 8 and digits.isdigit():
             y, m, d = int(digits[0:4]), int(digits[4:6]), int(digits[6:8])
+            if y >= 1700:
+                return None
             return jdatetime.date(y, m, d)
     except (ValueError, TypeError):
         return None

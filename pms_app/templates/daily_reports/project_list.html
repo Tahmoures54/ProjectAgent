@@ -2,8 +2,8 @@
 {% block title %}گزارش روزانه — {{ project.project_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto space-y-6" dir="rtl">
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div class="max-w-6xl mx-auto space-y-6" dir="rtl" x-data="{ importOpen: false }">
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
     <div>
       <nav class="flex items-center gap-2 text-xs text-slate-500 mb-2">
         <a href="{{ url_for('projects.projects') }}" class="hover:text-brand-600">پروژه‌ها</a>
@@ -12,15 +12,21 @@
         <i class="fas fa-chevron-left text-[8px]"></i>
         <span class="text-brand-600">گزارش روزانه</span>
       </nav>
-      <h1 class="text-2xl font-black text-slate-800 dark:text-white">گزارش‌های روزانه پروژه</h1>
+      <h1 class="text-2xl md:text-3xl font-black text-slate-800 dark:text-white">گزارش‌های روزانه پروژه</h1>
       <p class="text-sm text-slate-500 mt-1 font-mono">{{ project.project_code }}</p>
     </div>
-    {% if can_submit %}
-    <a href="{{ url_for('daily_reports.create', project_id=project.id) }}"
-       class="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 text-white font-bold text-sm rounded-2xl hover:bg-brand-700 shadow-lg shadow-brand-500/20">
-      <i class="fas fa-plus"></i> ثبت گزارش جدید
-    </a>
-    {% endif %}
+    <div class="flex flex-wrap gap-2">
+      <a href="{{ url_for('projects.epc_controls', project_id=project.id) }}" class="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 text-sm font-bold">کنترل EPC</a>
+      <a href="{{ url_for('daily_reports.export_xlsx', project_id=project.id) }}" class="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 text-sm font-bold"><i class="fas fa-file-export text-brand-600 ml-1"></i> خروجی اکسل</a>
+      {% if can_submit %}
+      <a href="{{ url_for('daily_reports.template_xlsx', project_id=project.id) }}" class="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 text-sm font-bold"><i class="fas fa-download text-emerald-600 ml-1"></i> قالب</a>
+      <button type="button" @click="importOpen = true" class="px-4 py-2.5 rounded-2xl bg-emerald-600 text-white text-sm font-bold"><i class="fas fa-file-import ml-1"></i> ورود اکسل</button>
+      <a href="{{ url_for('daily_reports.create', project_id=project.id) }}"
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 text-white font-bold text-sm rounded-2xl hover:bg-brand-700 shadow-lg shadow-brand-500/20">
+        <i class="fas fa-plus"></i> ثبت گزارش جدید
+      </a>
+      {% endif %}
+    </div>
   </div>
 
   <div class="flex gap-2 flex-wrap">
@@ -32,42 +38,63 @@
     {% endfor %}
   </div>
 
-  <div class="grid gap-4">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     {% for r in reports %}
-    <a href="{{ url_for('daily_reports.detail', report_id=r.id) }}"
-       class="block bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 hover:border-brand-300 dark:hover:border-brand-600 transition shadow-sm">
+    <a href="{{ url_for('daily_reports.detail', report_id=r.id) }}" class="pa-report-card">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center text-brand-600">
+          <div class="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center text-brand-600">
             <i class="fas fa-calendar-day text-lg"></i>
           </div>
           <div>
-            <p class="font-black text-slate-800 dark:text-white">{{ r.report_date }}</p>
-            <p class="text-xs text-slate-500">{{ r.submitted_by.full_name or r.submitted_by.email if r.submitted_by else '—' }} · نیروی انسانی: {{ r.manpower_total or 0 }}</p>
+            <p class="font-black text-slate-800 dark:text-white">{{ r.report_date|jalali_long }}</p>
+            <p class="text-xs text-slate-500">{{ r.submitted_by.full_name or r.submitted_by.email if r.submitted_by else '—' }} · {{ r.manpower_total or 0 }} نفر</p>
           </div>
         </div>
-        <span class="inline-flex px-3 py-1 rounded-full text-xs font-bold
-          {% if r.status == 'approved' %}bg-emerald-100 text-emerald-700
-          {% elif r.status == 'rejected' %}bg-rose-100 text-rose-700
-          {% elif r.status in ('submitted', 'under_review') %}bg-amber-100 text-amber-700
-          {% elif r.status == 'needs_revision' %}bg-orange-100 text-orange-700
-          {% else %}bg-slate-100 text-slate-600{% endif %}">
-          {{ status_labels.get(r.status, r.status) }}
-        </span>
+        <span class="pa-status pa-status-{{ r.status }}">{{ status_labels.get(r.status, r.status) }}</span>
       </div>
       {% if r.work_performed %}
       <p class="mt-3 text-sm text-slate-600 dark:text-slate-300 line-clamp-2">{{ r.work_performed[:180] }}{% if r.work_performed|length > 180 %}...{% endif %}</p>
       {% endif %}
+      <div class="mt-3 flex flex-wrap gap-2 text-[11px] font-bold text-slate-500">
+        {% if r.epc_phase %}<span class="pa-pill">{{ r.epc_phase_label }}</span>{% endif %}
+        {% if r.work_area %}<span class="pa-pill">{{ r.work_area }}</span>{% endif %}
+        <span class="pa-pill">{{ r.weather_label }}</span>
+        {% if r.near_miss_count %}<span class="pa-pill text-rose-600">Near miss {{ r.near_miss_count }}</span>{% endif %}
+      </div>
     </a>
     {% else %}
-    <div class="text-center py-16 text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+    <div class="md:col-span-2 pa-empty">
       <i class="fas fa-clipboard-list text-4xl mb-3 opacity-40"></i>
       <p>هنوز گزارش روزانه‌ای ثبت نشده است.</p>
       {% if can_submit %}
-      <a href="{{ url_for('daily_reports.create', project_id=project.id) }}" class="inline-block mt-4 text-brand-600 font-bold hover:underline">اولین گزارش را ثبت کنید</a>
+      <div class="flex flex-wrap justify-center gap-3 mt-4">
+        <a href="{{ url_for('daily_reports.create', project_id=project.id) }}" class="text-brand-600 font-bold hover:underline">اولین گزارش را ثبت کنید</a>
+        <span class="text-slate-300">یا</span>
+        <button type="button" @click="importOpen = true" class="text-emerald-600 font-bold">از اکسل وارد کنید</button>
+      </div>
       {% endif %}
     </div>
     {% endfor %}
+  </div>
+
+  <div x-show="importOpen" x-cloak class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/40" @keydown.escape.window="importOpen=false">
+    <div class="w-full max-w-lg pa-card p-6" @click.outside="importOpen=false">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-black text-lg">ورود گزارش از اکسل</h3>
+        <button type="button" @click="importOpen=false" class="text-slate-400"><i class="fas fa-times"></i></button>
+      </div>
+      <p class="text-sm text-slate-500 mb-4">چند روز را یکجا وارد کنید. برگه‌های نیروی انسانی، ماشین‌آلات، پیشرفت و مصالح با تاریخ به همان گزارش وصل می‌شوند.</p>
+      <form method="post" action="{{ url_for('daily_reports.import_xlsx', project_id=project.id) }}" enctype="multipart/form-data" class="space-y-4">
+        {% if import_form is defined %}{{ import_form.hidden_tag() }}{% endif %}
+        <input type="file" name="file" accept=".xlsx,.xls" required class="block w-full text-sm">
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="submit_after" value="y"> پس از ورود، برای تأیید ارسال شود
+        </label>
+        <a href="{{ url_for('daily_reports.template_xlsx', project_id=project.id) }}" class="block text-sm text-brand-600 font-bold">دانلود قالب استاندارد</a>
+        <button class="w-full py-3 rounded-2xl bg-emerald-600 text-white font-bold">ورود فایل</button>
+      </form>
+    </div>
   </div>
 </div>
 {% endblock %}

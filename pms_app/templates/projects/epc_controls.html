@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}کنترل EPC | {{ project.project_name }}{% endblock %}
+
+{% block content %}
+{% set c = controls or {} %}
+{% set evm = c.evm or evm or {} %}
+{% set phases = c.phases or [] %}
+{% set hse = c.hse or {} %}
+{% set cats = c.concerns_by_category or {} %}
+
+<div class="max-w-7xl mx-auto space-y-8" dir="rtl">
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+    <div>
+      <nav class="flex items-center gap-2 text-xs text-slate-500 mb-2">
+        <a href="{{ url_for('projects.projects') }}" class="hover:text-brand-600">پروژه‌ها</a>
+        <i class="fas fa-chevron-left text-[8px]"></i>
+        <a href="{{ url_for('projects.project_view', project_id=project.id) }}" class="hover:text-brand-600">{{ project.project_name }}</a>
+        <i class="fas fa-chevron-left text-[8px]"></i>
+        <span class="text-brand-600">اتاق کنترل EPC</span>
+      </nav>
+      <p class="text-xs font-black tracking-[0.25em] text-brand-500 uppercase">Engineering · Procurement · Construction</p>
+      <h1 class="text-3xl font-black text-slate-800 dark:text-white mt-1">اتاق کنترل پروژه</h1>
+      <p class="text-sm text-slate-500 mt-1">پیشرفت فازها، lookahead، تأخیر، HSE، کانسرن و ارزش کسب‌شده در یک نگاه</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{{ url_for('daily_reports.project_list', project_id=project.id) }}" class="px-4 py-2.5 rounded-2xl bg-brand-600 text-white text-sm font-bold">گزارش روزانه</a>
+      <a href="{{ url_for('concerns.index', project_id=project.id) }}" class="px-4 py-2.5 rounded-2xl border text-sm font-bold">کانسرن</a>
+      <a href="{{ url_for('projects.schedule', project_id=project.id) }}" class="px-4 py-2.5 rounded-2xl border text-sm font-bold">زمان‌بندی</a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div class="pa-kpi pa-kpi-brand"><span>پیشرفت</span><strong>{{ "%.1f"|format(evm.percent_complete or 0) }}%</strong></div>
+    <div class="pa-kpi"><span>CPI</span><strong class="{% if (evm.cpi or 1) >= 1 %}text-emerald-600{% else %}text-rose-600{% endif %}">{{ "%.2f"|format(evm.cpi or 0) }}</strong></div>
+    <div class="pa-kpi"><span>SPI</span><strong class="{% if evm.spi is none %}{% elif (evm.spi or 1) >= 1 %}text-emerald-600{% else %}text-amber-600{% endif %}">{{ "%.2f"|format(evm.spi or 0) if evm.spi is not none else '—' }}</strong></div>
+    <div class="pa-kpi pa-kpi-rose"><span>فعالیت تأخیری</span><strong>{{ c.delayed_count or 0 }}</strong></div>
+    <div class="pa-kpi pa-kpi-amber"><span>کانسرن باز</span><strong>{{ c.concerns_open or 0 }}</strong></div>
+    <div class="pa-kpi pa-kpi-emerald"><span>نفرات میانگین</span><strong>{{ hse.manpower_avg or 0 }}</strong></div>
+  </div>
+
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-5">
+    {% for p in phases if p.key != 'other' or p.item_count %}
+    {% set colors = {'engineering': 'from-sky-500 to-indigo-500', 'procurement': 'from-amber-500 to-orange-500', 'construction': 'from-emerald-500 to-teal-500', 'other': 'from-slate-400 to-slate-600'} %}
+    <article class="pa-card overflow-hidden">
+      <div class="h-1.5 bg-gradient-to-l {{ colors.get(p.key, 'from-brand-500 to-teal-400') }}"></div>
+      <div class="p-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-[11px] font-black tracking-widest text-slate-400 uppercase">{{ p.key }}</p>
+            <h2 class="text-xl font-black text-slate-800 dark:text-white">{{ p.label }}</h2>
+          </div>
+          <span class="text-3xl font-black {% if p.pct >= 80 %}text-emerald-600{% elif p.pct >= 40 %}text-brand-600{% else %}text-amber-600{% endif %}">{{ "%.0f"|format(p.pct) }}%</span>
+        </div>
+        <div class="mt-4 h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-full rounded-full bg-gradient-to-l {{ colors.get(p.key, 'from-brand-500 to-teal-400') }}" style="width: {{ p.pct }}%"></div>
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-500">
+          <span>{{ p.item_count }} فعالیت</span>
+          <span>{{ p.done_count }} تکمیل</span>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <section class="pa-card p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-black">Lookahead دو هفته</h3>
+        <span class="text-xs text-slate-400">فعالیت‌های پیش‌رو</span>
+      </div>
+      <ul class="space-y-3">
+        {% for a in c.lookahead or [] %}
+        <li class="flex items-start justify-between gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/40">
+          <div class="min-w-0">
+            <p class="text-sm font-bold truncate">{{ a.title }}</p>
+            <p class="text-[11px] text-slate-400 font-mono">{{ a.wbs or '—' }} · {{ a.discipline or '—' }}</p>
+          </div>
+          <div class="text-left shrink-0">
+            <p class="text-xs font-black text-brand-600">{{ "%.0f"|format(a.pct) }}%</p>
+            <p class="text-[11px] text-slate-400">{{ a.finish|jalali if a.finish else (a.start|jalali if a.start else '—') }}</p>
+          </div>
+        </li>
+        {% else %}
+        <li class="text-sm text-slate-400 py-8 text-center">فعالیت باز در دو هفته آینده ثبت نشده.</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="pa-card p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-black">تأخیر نسبت به Baseline</h3>
+        <span class="text-xs text-rose-500 font-bold">{{ c.delayed_count or 0 }} مورد</span>
+      </div>
+      <ul class="space-y-3">
+        {% for a in c.delayed or [] %}
+        <li class="flex items-start justify-between gap-3 p-3 rounded-2xl bg-rose-50/70 dark:bg-rose-500/10">
+          <div class="min-w-0">
+            <p class="text-sm font-bold truncate">{{ a.title }}</p>
+            <p class="text-[11px] text-slate-400">{{ a.discipline or a.wbs or '—' }}</p>
+          </div>
+          <div class="text-left shrink-0">
+            <p class="text-xs font-black text-rose-600">{{ a.days_late }} روز</p>
+            <p class="text-[11px] text-slate-400">{{ "%.0f"|format(a.pct) }}%</p>
+          </div>
+        </li>
+        {% else %}
+        <li class="text-sm text-slate-400 py-8 text-center">فعالیت تأخیری نسبت به تاریخ پایان مبنا نیست.</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <section class="pa-card p-6">
+      <h3 class="font-black mb-4">HSE از گزارش روزانه</h3>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="pa-kpi pa-kpi-rose"><span>حادثه ثبت‌شده</span><strong>{{ hse.incidents or 0 }}</strong></div>
+        <div class="pa-kpi pa-kpi-amber"><span>Near Miss</span><strong>{{ hse.near_miss or 0 }}</strong></div>
+        <div class="pa-kpi"><span>ساعت توقف</span><strong>{{ "%.1f"|format(hse.lost_hours or 0) }}</strong></div>
+        <div class="pa-kpi pa-kpi-emerald"><span>روز گزارش</span><strong>{{ hse.days or 0 }}</strong></div>
+      </div>
+    </section>
+
+    <section class="pa-card p-6">
+      <h3 class="font-black mb-4">کانسرن‌های کنترل پروژه</h3>
+      <ul class="space-y-2 text-sm">
+        {% for key, label in [('technical','فنی'),('schedule','زمان'),('cost','هزینه'),('safety','HSE'),('quality','کیفیت'),('contractual','قراردادی'),('resource','منابع')] %}
+        <li class="flex justify-between">
+          <span class="text-slate-500">{{ label }}</span>
+          <span class="font-black">{{ cats.get(key, 0) }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <a href="{{ url_for('concerns.index', project_id=project.id) }}" class="mt-4 inline-block text-xs font-bold text-brand-600">مشاهده همه</a>
+    </section>
+
+    <section class="pa-card p-6 bg-gradient-to-br from-brand-600 to-teal-500 text-white border-0">
+      <h3 class="font-black mb-3">عملکرد EVM</h3>
+      <ul class="space-y-2 text-sm text-white/90">
+        <li class="flex justify-between"><span>BAC</span><span class="font-bold">{{ "{:,.0f}".format(evm.bac or 0) }}</span></li>
+        <li class="flex justify-between"><span>EV</span><span class="font-bold">{{ "{:,.0f}".format(evm.ev or 0) }}</span></li>
+        <li class="flex justify-between"><span>AC</span><span class="font-bold">{{ "{:,.0f}".format(evm.ac or 0) }}</span></li>
+        <li class="flex justify-between"><span>EAC</span><span class="font-bold">{{ "{:,.0f}".format(evm.eac or 0) }}</span></li>
+      </ul>
+      <p class="text-xs text-white/70 mt-4">{{ c.item_count or 0 }} فعالیت قراردادی در WBS</p>
+    </section>
+  </div>
+
+  <section class="pa-card overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+      <h3 class="font-black">آخرین گزارش‌های کارگاه</h3>
+      <a href="{{ url_for('daily_reports.project_list', project_id=project.id) }}" class="text-xs font-bold text-brand-600">همه</a>
+    </div>
+    <div class="divide-y divide-slate-100 dark:divide-slate-700">
+      {% for r in c.recent_reports or [] %}
+      <a href="{{ url_for('daily_reports.detail', report_id=r.id) }}" class="flex items-center justify-between px-6 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 no-underline">
+        <div>
+          <p class="text-sm font-bold text-slate-800 dark:text-white">{{ r.report_date|jalali_long }}</p>
+          <p class="text-xs text-slate-400">{{ r.epc_phase_label }} · {{ r.manpower_total or 0 }} نفر</p>
+        </div>
+        <span class="pa-status pa-status-{{ r.status }}">{{ r.status_label }}</span>
+      </a>
+      {% else %}
+      <p class="px-6 py-10 text-center text-sm text-slate-400">گزارش روزانه ثبت نشده است.</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
