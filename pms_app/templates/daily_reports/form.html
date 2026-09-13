@@ -51,6 +51,7 @@
     {{ form.equipment_details_raw(class="hidden", **{'x-ref': 'equipmentRaw'}) }}
     {{ form.progress_updates_raw(class="hidden", **{'x-ref': 'progressRaw'}) }}
     {{ form.materials_received_raw(class="hidden", **{'x-ref': 'materialsRaw'}) }}
+    {{ form.engineering_outputs_raw(class="hidden", **{'x-ref': 'engineeringRaw'}) }}
 
     <section>
       <h3 class="pa-section-title"><i class="fas fa-calendar-day text-brand-500"></i> مشخصات روز</h3>
@@ -178,6 +179,29 @@
 
     <section>
       <div class="flex items-center justify-between mb-3">
+        <h3 class="pa-section-title mb-0"><i class="fas fa-drafting-compass text-sky-600"></i> خروجی‌های مهندسی</h3>
+        <button type="button" class="pa-chip-btn" @click="engineering.push({doc_no:'', title:'', status:''})"><i class="fas fa-plus"></i> ردیف</button>
+      </div>
+      <p class="text-xs text-slate-400 mb-3">مدارک صادرشده امروز: IFR / IFA / IFC، ایزومتریک، دیتا شیت و …</p>
+      <div class="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-700">
+        <table class="pa-grid">
+          <thead><tr><th class="w-36">شماره مدرک</th><th>عنوان</th><th class="w-36">وضعیت</th><th class="w-12"></th></tr></thead>
+          <tbody>
+            <template x-for="(row, i) in engineering" :key="i">
+              <tr>
+                <td><input class="pa-input" x-model="row.doc_no" placeholder="PID-001"></td>
+                <td><input class="pa-input" x-model="row.title" placeholder="P&amp;ID واحد ۳"></td>
+                <td><input class="pa-input" x-model="row.status" placeholder="IFC / Issued"></td>
+                <td><button type="button" class="text-rose-400" @click="engineering.splice(i,1)"><i class="fas fa-times"></i></button></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between mb-3">
         <h3 class="pa-section-title mb-0"><i class="fas fa-boxes-stacked text-teal-500"></i> مصالح واردشده (تدارکات)</h3>
         <button type="button" class="pa-chip-btn" @click="materials.push({name:'', qty:'', unit:'', vendor:''})"><i class="fas fa-plus"></i> ردیف</button>
       </div>
@@ -290,6 +314,7 @@ function dailyReportForm() {
     equipment: parseRows(boot.equipment, [{name:'', count:1, hours:8}]),
     progress: parseRows(boot.progress, [{contract_item_id:'', progress_percent:'', quantity_done:'', notes:''}]),
     materials: parseRows(boot.materials, [{name:'', qty:'', unit:'', vendor:''}]),
+    engineering: parseRows(boot.engineering, [{doc_no:'', title:'', status:''}]),
     manpowerTotal: boot.manpowerTotal || 0,
     syncTables() {
       const mp = this.manpower.filter(r => (r.role || '').trim());
@@ -297,6 +322,7 @@ function dailyReportForm() {
       this.$refs.equipmentRaw.value = JSON.stringify(this.equipment.filter(r => (r.name || '').trim()));
       this.$refs.progressRaw.value = JSON.stringify(this.progress.filter(r => r.contract_item_id));
       this.$refs.materialsRaw.value = JSON.stringify(this.materials.filter(r => (r.name || '').trim()));
+      this.$refs.engineeringRaw.value = JSON.stringify(this.engineering.filter(r => (r.title || r.doc_no || '').trim()));
       const total = mp.reduce((s, r) => s + Number(r.count || 0), 0);
       const el = document.querySelector('[name=manpower_total]');
       if (el && (!el.value || Number(el.value) === 0) && total) el.value = total;
@@ -308,6 +334,7 @@ window.DAILY_REPORT_BOOT = {
   equipment: {{ (form.equipment_details_raw.data or '') | tojson }},
   progress: {{ (form.progress_updates_raw.data or '') | tojson }},
   materials: {{ (form.materials_received_raw.data or '') | tojson }},
+  engineering: {{ (form.engineering_outputs_raw.data or '') | tojson }},
   manpowerTotal: {{ (form.manpower_total.data or 0) | tojson }},
   items: {{ (contract_items or []) | tojson }}
 };

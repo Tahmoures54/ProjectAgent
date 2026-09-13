@@ -72,6 +72,38 @@ MATERIALS_ALIASES = {
     "vendor": ("vendor", "فروشنده", "تامینکننده", "تأمین‌کننده"),
 }
 
+ENGINEERING_ALIASES = {
+    "report_date": ("date", "report_date", "تاریخ"),
+    "doc_no": ("doc_no", "document_no", "شماره", "شمارهمدرک", "کدمدرک", "کد"),
+    "title": ("title", "عنوان", "مدرک", "شرح"),
+    "status": ("status", "وضعیت", "مرحله"),
+}
+
+
+def _blank_payload() -> Dict[str, Any]:
+    return {
+        "epc_phase": None,
+        "shift": None,
+        "work_area": None,
+        "weather": None,
+        "temperature_min": None,
+        "temperature_max": None,
+        "manpower_total": 0,
+        "work_performed": [],
+        "issues_delays": [],
+        "hse_incidents": [],
+        "hse_observations": [],
+        "near_miss_count": 0,
+        "lost_time_hours": None,
+        "visitors_meetings": [],
+        "notes": [],
+        "manpower_details": [],
+        "equipment_details": [],
+        "progress_updates": [],
+        "materials_received": [],
+        "engineering_outputs": [],
+    }
+
 WEATHER_MAP = {
     "آفتابی": "sunny",
     "sunny": "sunny",
@@ -153,7 +185,7 @@ def build_template_workbook(project, items: Optional[List[ContractItem]] = None)
     lines = [
         f"پروژه: {project.project_name} ({project.project_code})",
         "هر ردیف در برگه «گزارش روزانه» یک روز است. تاریخ را خورشیدی (1403/06/20) یا میلادی (2026-09-13) بنویسید.",
-        "برگه‌های نیروی انسانی، ماشین‌آلات، پیشرفت و مصالح اختیاری‌اند و با همان تاریخ به گزارش وصل می‌شوند.",
+        "برگه‌های نیروی انسانی، ماشین‌آلات، پیشرفت، مصالح و مهندسی اختیاری‌اند و با همان تاریخ به گزارش وصل می‌شوند.",
         "اگر برای یک تاریخ چند ردیف نیروی انسانی بنویسید، همه در همان گزارش ذخیره می‌شوند.",
         "ستون «کد WBS» در پیشرفت می‌تواند شناسه آیتم، کد WBS یا شماره PMS باشد.",
         "پس از ورود، گزارش‌ها به‌صورت پیش‌نویس ذخیره می‌شوند تا بررسی و ارسال کنید.",
@@ -246,6 +278,13 @@ def build_template_workbook(project, items: Optional[List[ContractItem]] = None)
     style_header_row(mat, fill_hex="059669")
     mat.append([today, "سیمان تیپ ۲", 40, "تن", "سیمان تهران"])
     autosize(mat)
+
+    eng = wb.create_sheet("مهندسی")
+    eng.append(["تاریخ", "شماره مدرک", "عنوان", "وضعیت"])
+    style_header_row(eng, fill_hex="0284C7")
+    eng.append([today, "PID-003", "P&ID واحد ۳", "IFC"])
+    eng.append([today, "ISO-118", "ایزومتریک خط ۱۲ اینچ", "Issued"])
+    autosize(eng)
 
     ref = wb.create_sheet("آیتم های پروژه")
     ref.append(["شناسه", "کد WBS", "شماره PMS", "عنوان", "دیسیپلین", "درصد فعلی"])
@@ -342,6 +381,9 @@ def export_reports_workbook(project, reports: List[DailyReport]):
     mat = wb.create_sheet("مصالح")
     mat.append(["تاریخ", "نام", "مقدار", "واحد", "تأمین‌کننده"])
     style_header_row(mat, fill_hex="059669")
+    eng = wb.create_sheet("مهندسی")
+    eng.append(["تاریخ", "شماره مدرک", "عنوان", "وضعیت"])
+    style_header_row(eng, fill_hex="0284C7")
     for r in reports:
         d = r.report_date.isoformat() if r.report_date else ""
         for row in r.manpower_details or []:
@@ -360,10 +402,13 @@ def export_reports_workbook(project, reports: List[DailyReport]):
             )
         for row in r.materials_received or []:
             mat.append([d, row.get("name"), row.get("qty"), row.get("unit"), row.get("vendor")])
+        for row in r.engineering_outputs or []:
+            eng.append([d, row.get("doc_no"), row.get("title"), row.get("status")])
     autosize(mp)
     autosize(eq)
     autosize(pr)
     autosize(mat)
+    autosize(eng)
     return wb
 
 
@@ -449,30 +494,7 @@ def import_daily_reports_from_workbook(
             skipped += 1
             errors.append(f"ردیف {line_no}: تاریخ آینده مجاز نیست")
             continue
-        payload = grouped.setdefault(
-            report_date,
-            {
-                "epc_phase": None,
-                "shift": None,
-                "work_area": None,
-                "weather": None,
-                "temperature_min": None,
-                "temperature_max": None,
-                "manpower_total": 0,
-                "work_performed": [],
-                "issues_delays": [],
-                "hse_incidents": [],
-                "hse_observations": [],
-                "near_miss_count": 0,
-                "lost_time_hours": None,
-                "visitors_meetings": [],
-                "notes": [],
-                "manpower_details": [],
-                "equipment_details": [],
-                "progress_updates": [],
-                "materials_received": [],
-            },
-        )
+        payload = grouped.setdefault(report_date, _blank_payload())
         payload["epc_phase"] = payload["epc_phase"] or _map_choice(cell(row, idx, "epc_phase"), PHASE_MAP)
         payload["shift"] = payload["shift"] or _map_choice(cell(row, idx, "shift"), SHIFT_MAP)
         payload["work_area"] = payload["work_area"] or cell(row, idx, "work_area")
@@ -511,30 +533,7 @@ def import_daily_reports_from_workbook(
             d = parse_excel_date(cell(row, ix, "report_date"))
             if not d:
                 continue
-            payload = grouped.setdefault(
-                d,
-                {
-                    "epc_phase": None,
-                    "shift": None,
-                    "work_area": None,
-                    "weather": None,
-                    "temperature_min": None,
-                    "temperature_max": None,
-                    "manpower_total": 0,
-                    "work_performed": [],
-                    "issues_delays": [],
-                    "hse_incidents": [],
-                    "hse_observations": [],
-                    "near_miss_count": 0,
-                    "lost_time_hours": None,
-                    "visitors_meetings": [],
-                    "notes": [],
-                    "manpower_details": [],
-                    "equipment_details": [],
-                    "progress_updates": [],
-                    "materials_received": [],
-                },
-            )
+            payload = grouped.setdefault(d, _blank_payload())
             builder(payload, ix, row)
 
     item_map = _index_project_items(project)
@@ -583,6 +582,19 @@ def import_daily_reports_from_workbook(
             }
         )
 
+    def add_engineering(payload, ix, row):
+        title = cell(row, ix, "title")
+        doc_no = cell(row, ix, "doc_no")
+        if not title and not doc_no:
+            return
+        payload["engineering_outputs"].append(
+            {
+                "doc_no": str(doc_no or ""),
+                "title": str(title or doc_no or ""),
+                "status": str(cell(row, ix, "status") or ""),
+            }
+        )
+
     _ingest_child(
         _sheet_by_aliases(wb, ("نیروی انسانی", "نیرویانسانی", "manpower")),
         MANPOWER_ALIASES,
@@ -602,6 +614,11 @@ def import_daily_reports_from_workbook(
         _sheet_by_aliases(wb, ("مصالح", "مواد", "materials")),
         MATERIALS_ALIASES,
         add_materials,
+    )
+    _ingest_child(
+        _sheet_by_aliases(wb, ("مهندسی", "مدارک", "engineering", "documents")),
+        ENGINEERING_ALIASES,
+        add_engineering,
     )
 
     created = 0
@@ -648,6 +665,7 @@ def import_daily_reports_from_workbook(
             shift=payload["shift"],
             lost_time_hours=payload["lost_time_hours"],
             materials_received=payload["materials_received"] or None,
+            engineering_outputs=payload["engineering_outputs"] or None,
         )
 
         if existing:

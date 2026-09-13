@@ -92,6 +92,21 @@
       </div>
       {% endif %}
 
+      {% if report.engineering_outputs %}
+      <div>
+        <h4 class="text-xs font-bold text-slate-400 mb-2">خروجی‌های مهندسی</h4>
+        <ul class="text-sm space-y-1">
+          {% for d in report.engineering_outputs %}
+          <li>
+            {% if d.doc_no %}<span class="font-mono text-brand-600">{{ d.doc_no }}</span>{% endif %}
+            {{ d.title or '—' }}
+            {% if d.status %}<span class="pa-pill">{{ d.status }}</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
       {% if report.materials_received %}
       <div>
         <h4 class="text-xs font-bold text-slate-400 mb-2">مصالح واردشده</h4>

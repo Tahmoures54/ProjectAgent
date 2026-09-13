@@ -148,8 +148,19 @@ def _parse_structured(raw: str, kind: str) -> List[dict]:
                             "vendor": it.get("vendor") or "",
                         }
                     )
+                elif kind == "engineering":
+                    title = it.get("title") or it.get("doc_no")
+                    if not title:
+                        continue
+                    rows.append(
+                        {
+                            "doc_no": str(it.get("doc_no") or ""),
+                            "title": str(it.get("title") or title),
+                            "status": str(it.get("status") or ""),
+                        }
+                    )
             return rows
-    expected = {"manpower": 2, "equipment": 3, "progress": 4, "materials": 4}.get(kind, 2)
+    expected = {"manpower": 2, "equipment": 3, "progress": 4, "materials": 4, "engineering": 3}.get(kind, 2)
     parsed = _parse_lines_to_list(text, expected)
     if kind == "materials":
         out = []
@@ -166,6 +177,23 @@ def _parse_structured(raw: str, kind: str) -> List[dict]:
                     "qty": _safe_float(parts[1] if len(parts) > 1 else None),
                     "unit": parts[2] if len(parts) > 2 else "",
                     "vendor": parts[3] if len(parts) > 3 else "",
+                }
+            )
+        return out
+    if kind == "engineering":
+        out = []
+        for line in text.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = [p.strip() for p in line.replace("|", ",").split(",") if p.strip()]
+            if not parts:
+                continue
+            out.append(
+                {
+                    "doc_no": parts[0] if len(parts) > 1 else "",
+                    "title": parts[1] if len(parts) > 1 else parts[0],
+                    "status": parts[2] if len(parts) > 2 else "",
                 }
             )
         return out
@@ -225,6 +253,7 @@ def _apply_form_to_report(report: DailyReport, form: DailyReportForm) -> None:
     report.shift = form.shift.data or None
     report.lost_time_hours = form.lost_time_hours.data
     report.materials_received = _parse_structured(form.materials_received_raw.data or "", "materials")
+    report.engineering_outputs = _parse_structured(form.engineering_outputs_raw.data or "", "engineering")
     if report.manpower_details and not report.manpower_total:
         report.manpower_total = sum(int(x.get("count") or 0) for x in report.manpower_details)
 
@@ -234,6 +263,7 @@ def _hydrate_form(form: DailyReportForm, report: DailyReport) -> None:
     form.equipment_details_raw.data = dumps_rows(report.equipment_details)
     form.progress_updates_raw.data = dumps_rows(report.progress_updates)
     form.materials_received_raw.data = dumps_rows(report.materials_received)
+    form.engineering_outputs_raw.data = dumps_rows(report.engineering_outputs)
 
 
 def can_manage_project_reports(project: Project) -> bool:

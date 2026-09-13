@@ -170,6 +170,7 @@ def test_daily_report_excel_template_and_import(client, db_session):
     assert "spreadsheetml" in template.content_type
     wb = load_workbook(BytesIO(template.data))
     assert "گزارش روزانه" in wb.sheetnames
+    assert "مهندسی" in wb.sheetnames
 
     out = Workbook()
     ws = out.active
@@ -179,6 +180,9 @@ def test_daily_report_excel_template_and_import(client, db_session):
     mp = out.create_sheet("نیروی انسانی")
     mp.append(["تاریخ", "نقش", "تعداد"])
     mp.append([date.today().isoformat(), "جوشکار", 5])
+    eng = out.create_sheet("مهندسی")
+    eng.append(["تاریخ", "شماره مدرک", "عنوان", "وضعیت"])
+    eng.append([date.today().isoformat(), "PID-003", "P&ID واحد ۳", "IFC"])
     bio = BytesIO()
     out.save(bio)
     bio.seek(0)
@@ -197,6 +201,7 @@ def test_daily_report_excel_template_and_import(client, db_session):
     assert report.manpower_total == 15
     assert report.epc_phase == "construction"
     assert report.manpower_details and report.manpower_details[0]["role"] == "جوشکار"
+    assert report.engineering_outputs and report.engineering_outputs[0]["doc_no"] == "PID-003"
 
     exported = client.get(f"/daily-reports/project/{project.id}/export.xlsx")
     assert exported.status_code == 200

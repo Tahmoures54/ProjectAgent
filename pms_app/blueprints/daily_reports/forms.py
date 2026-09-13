@@ -105,6 +105,12 @@ class DailyReportForm(FlaskForm):
         render_kw={"rows": 3},
     )
 
+    engineering_outputs_raw = TextAreaField(
+        "خروجی‌های مهندسی",
+        validators=[Optional(), Length(max=8000)],
+        render_kw={"rows": 3},
+    )
+
     issues_delays = TextAreaField(
         "مشکلات، تأخیرات و موانع",
         validators=[Optional(), Length(max=5000)],
