@@ -64,6 +64,22 @@ class JalaliDateField(Field):
 
         raw = str(valuelist[0]).strip()
 
+        year_hint = None
+        digits = raw.replace("/", "-").replace(".", "-")
+        if len(digits) >= 4 and digits[:4].isdigit():
+            year_hint = int(digits[:4])
+
+        # Gregorian ISO (20xx) must not be parsed as Jalali (14xx).
+        if year_hint is not None and year_hint >= 1700:
+            try:
+                if "T" in raw or " " in raw:
+                    self.data = datetime.fromisoformat(raw.replace("Z", "")).date()
+                else:
+                    self.data = date.fromisoformat(digits[:10])
+                return
+            except ValueError:
+                pass
+
         # 1) Try Jalali
         g = parse_jalali_to_gregorian(raw)
         if g is not None:

@@ -57,6 +57,7 @@ def summarize_items(items: Sequence) -> Dict[str, Any]:
             "ac_total": 0.0,
             "ev_total": 0.0,
             "disciplines": [],
+            "phases": [],
         }
 
     bac_total = 0.0
@@ -65,6 +66,9 @@ def summarize_items(items: Sequence) -> Dict[str, Any]:
 
     # discipline -> {bac, ev, count}
     disc: Dict[str, Dict[str, float]] = defaultdict(lambda: {"bac": 0.0, "ev": 0.0, "count": 0})
+    from pms_app.utils.epc import classify_epc_phase, PHASE_LABELS
+
+    phase_acc: Dict[str, Dict[str, float]] = defaultdict(lambda: {"bac": 0.0, "ev": 0.0, "count": 0})
 
     for it in items:
         bac = _item_bac(it)
@@ -80,6 +84,11 @@ def summarize_items(items: Sequence) -> Dict[str, Any]:
         disc[name]["bac"] += bac
         disc[name]["ev"] += ev
         disc[name]["count"] += 1
+
+        phase = classify_epc_phase(it)
+        phase_acc[phase]["bac"] += bac
+        phase_acc[phase]["ev"] += ev
+        phase_acc[phase]["count"] += 1
 
     if bac_total > 0:
         overall = round(ev_total / bac_total * 100.0, 1)
@@ -107,6 +116,22 @@ def summarize_items(items: Sequence) -> Dict[str, Any]:
     # sort by weight desc, then name
     disciplines.sort(key=lambda x: (-x["weight"], x["name"]))
 
+    phases = []
+    for key in ("engineering", "procurement", "construction", "other"):
+        data = phase_acc.get(key) or {"bac": 0.0, "ev": 0.0, "count": 0}
+        if data["bac"] > 0:
+            ppct = round(data["ev"] / data["bac"] * 100.0, 1)
+        else:
+            ppct = 0.0
+        phases.append(
+            {
+                "key": key,
+                "name": PHASE_LABELS.get(key, key),
+                "pct": ppct,
+                "item_count": int(data["count"]),
+            }
+        )
+
     return {
         "overall_pct": overall,
         "item_count": len(items),
@@ -114,6 +139,7 @@ def summarize_items(items: Sequence) -> Dict[str, Any]:
         "ac_total": ac_total,
         "ev_total": ev_total,
         "disciplines": disciplines[:6],  # top 6 for cards
+        "phases": phases,
     }
 
 

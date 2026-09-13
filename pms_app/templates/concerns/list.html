@@ -75,10 +75,12 @@
     <button type="submit" class="px-5 py-2 bg-brand-600 text-white rounded-xl text-sm font-bold hover:bg-brand-700">فیلتر</button>
   </form>
 
-  <div class="grid gap-3">
+  <div class="grid gap-4 md:grid-cols-2">
     {% for c in concerns %}
     <a href="{{ url_for('concerns.detail', concern_id=c.id) }}"
-       class="block bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 hover:border-rose-300 dark:hover:border-rose-600 transition shadow-sm">
+       class="pa-report-card group">
+      <div class="h-1.5 w-full rounded-t-3xl {% if c.priority == 'critical' %}bg-rose-500{% elif c.priority == 'high' %}bg-orange-400{% elif c.priority == 'medium' %}bg-amber-400{% else %}bg-slate-300{% endif %}"></div>
+      <div class="p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-2 mb-1">
@@ -111,6 +113,7 @@
       {% if c.description %}
       <p class="mt-2 text-sm text-slate-600 dark:text-slate-300 line-clamp-2">{{ c.description[:200] }}{% if c.description|length > 200 %}...{% endif %}</p>
       {% endif %}
+      </div>
     </a>
     {% else %}
     <div class="text-center py-16 text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">

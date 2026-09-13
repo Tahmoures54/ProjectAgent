@@ -145,3 +145,79 @@ def test_contractor_submits_and_admin_approves_via_http(client, db_session):
     assert review.status_code in (301, 302)
     db_session.refresh(report)
     assert report.status == "approved"
+
+
+def test_daily_report_excel_template_and_import(client, db_session):
+    from io import BytesIO
+
+    from openpyxl import Workbook, load_workbook
+
+    company, project = _company_project(db_session, "XLS")
+    admin = _user(db_session, "xls_admin", "company_admin", company.id)
+    db_session.add(
+        ProjectMembership(
+            project_id=project.id,
+            user_id=admin.id,
+            role="admin",
+            status="active",
+        )
+    )
+    db_session.commit()
+    _login(client, admin.email)
+
+    template = client.get(f"/daily-reports/project/{project.id}/template.xlsx")
+    assert template.status_code == 200
+    assert "spreadsheetml" in template.content_type
+    wb = load_workbook(BytesIO(template.data))
+    assert "گزارش روزانه" in wb.sheetnames
+
+    out = Workbook()
+    ws = out.active
+    ws.title = "گزارش روزانه"
+    ws.append(["تاریخ", "شرح کار", "نیروی انسانی", "فاز EPC", "هوا"])
+    ws.append([date.today().isoformat(), "لوله کشی واحد ۳", 15, "اجرا", "آفتابی"])
+    mp = out.create_sheet("نیروی انسانی")
+    mp.append(["تاریخ", "نقش", "تعداد"])
+    mp.append([date.today().isoformat(), "جوشکار", 5])
+    bio = BytesIO()
+    out.save(bio)
+    bio.seek(0)
+
+    uploaded = client.post(
+        f"/daily-reports/project/{project.id}/import",
+        data={"file": (bio, "daily.xlsx")},
+        content_type="multipart/form-data",
+        follow_redirects=False,
+    )
+    assert uploaded.status_code in (301, 302)
+    report = DailyReport.query.filter_by(project_id=project.id).first()
+    assert report is not None
+    assert report.status == "draft"
+    assert report.work_performed == "لوله کشی واحد ۳"
+    assert report.manpower_total == 15
+    assert report.epc_phase == "construction"
+    assert report.manpower_details and report.manpower_details[0]["role"] == "جوشکار"
+
+    exported = client.get(f"/daily-reports/project/{project.id}/export.xlsx")
+    assert exported.status_code == 200
+    assert "spreadsheetml" in exported.content_type
+
+
+def test_epc_controls_page(client, db_session):
+    company, project = _company_project(db_session, "EPC")
+    admin = _user(db_session, "epc_admin", "company_admin", company.id)
+    db_session.add(
+        ProjectMembership(
+            project_id=project.id,
+            user_id=admin.id,
+            role="admin",
+            status="active",
+        )
+    )
+    db_session.commit()
+    _login(client, admin.email)
+    page = client.get(f"/projects/{project.id}/epc")
+    assert page.status_code == 200
+    html = page.get_data(as_text=True)
+    assert "اتاق کنترل" in html
+    assert "مهندسی" in html

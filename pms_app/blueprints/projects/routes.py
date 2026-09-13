@@ -241,11 +241,32 @@ def project_view(project_id: int):
     project = get_project_or_403(project_id)
     evm = project_evm(project)
     scurve = project_s_curve(project)
+    from pms_app.utils.epc import project_epc_controls
+
+    controls = project_epc_controls(project)
     return render_template(
         "projects/project_view.html",
         project=project,
         evm=evm.as_dict(),
         scurve=scurve,
+        controls=controls,
+    )
+
+
+@bp.route("/projects/<int:project_id>/epc")
+@require_permission("projects.read")
+def epc_controls(project_id: int):
+    project = get_project_or_403(project_id)
+    from pms_app.utils.epc import project_epc_controls
+    from pms_app.utils.evm import project_s_curve as _s_curve
+
+    controls = project_epc_controls(project)
+    return render_template(
+        "projects/epc_controls.html",
+        project=project,
+        controls=controls,
+        scurve=_s_curve(project),
+        evm=controls.get("evm") or {},
     )
 
 

@@ -22,6 +22,7 @@ class ProjectForm(FlaskForm):
         "صنعت",
         choices=[
             ("oil_gas", "نفت و گاز"),
+            ("epc", "EPC / پیمانکاری جامع"),
             ("construction", "عمران و ساخت"),
             ("power", "نیرو"),
             ("mining", "معدن"),

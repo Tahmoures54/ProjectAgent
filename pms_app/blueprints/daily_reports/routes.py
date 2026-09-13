@@ -1,6 +1,7 @@
 # Path: pms_app/blueprints/daily_reports/routes.py
 from __future__ import annotations
 
+import json
 from typing import List, Optional
 
 from flask import (
@@ -18,8 +19,10 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from pms_app.extensions import db
 from pms_app.models.daily_report import DailyReport, DailyReportHistory
+from pms_app.models.item import ContractItem
 from pms_app.models.project import Project
 from pms_app.models.project_membership import ProjectMembership
+from pms_app.utils.excel_io import workbook_to_bytes, xlsx_response
 from pms_app.utils.notify import notify_daily_report_decision, notify_daily_report_submitted
 from pms_app.utils.security import ensure_rbac_seed
 from pms_app.utils.access import (
@@ -29,7 +32,13 @@ from pms_app.utils.access import (
 )
 
 from . import bp
-from .forms import DailyReportForm, ReviewForm
+from .excel import (
+    build_template_workbook,
+    dumps_rows,
+    export_reports_workbook,
+    import_daily_reports_from_workbook,
+)
+from .forms import DailyReportForm, ImportExcelForm, ReviewForm
 
 
 def _parse_lines_to_list(raw: str, expected_parts: int = 2) -> List[dict]:
@@ -81,12 +90,150 @@ def _safe_float(v) -> Optional[float]:
 
 def _list_to_raw(items: Optional[list], keys: List[str]) -> str:
     if not items:
-        return ""
-    lines = []
-    for it in items:
-        vals = [str(it.get(k, "") or "") for k in keys]
-        lines.append(" | ".join(vals))
-    return "\n".join(lines)
+        return "[]"
+    return dumps_rows(items)
+
+
+def _parse_structured(raw: str, kind: str) -> List[dict]:
+    text = (raw or "").strip()
+    if not text:
+        return []
+    if text[0] in "[{":
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            data = None
+        if isinstance(data, dict):
+            data = [data]
+        if isinstance(data, list):
+            rows = []
+            for it in data:
+                if not isinstance(it, dict):
+                    continue
+                if kind == "manpower":
+                    role = it.get("role") or it.get("name")
+                    if not role:
+                        continue
+                    rows.append({"role": str(role), "count": _safe_int(it.get("count")) or 0})
+                elif kind == "equipment":
+                    name = it.get("name")
+                    if not name:
+                        continue
+                    rows.append(
+                        {
+                            "name": str(name),
+                            "count": _safe_int(it.get("count")) or 1,
+                            "hours": _safe_float(it.get("hours")) or 0,
+                        }
+                    )
+                elif kind == "progress":
+                    rows.append(
+                        {
+                            "contract_item_id": _safe_int(it.get("contract_item_id") or it.get("id")),
+                            "progress_percent": _safe_float(it.get("progress_percent")),
+                            "quantity_done": _safe_float(it.get("quantity_done")),
+                            "notes": it.get("notes") or "",
+                            "wbs_code": it.get("wbs_code") or "",
+                        }
+                    )
+                elif kind == "materials":
+                    name = it.get("name")
+                    if not name:
+                        continue
+                    rows.append(
+                        {
+                            "name": str(name),
+                            "qty": _safe_float(it.get("qty") or it.get("quantity")),
+                            "unit": it.get("unit") or "",
+                            "vendor": it.get("vendor") or "",
+                        }
+                    )
+            return rows
+    expected = {"manpower": 2, "equipment": 3, "progress": 4, "materials": 4}.get(kind, 2)
+    parsed = _parse_lines_to_list(text, expected)
+    if kind == "materials":
+        out = []
+        for line in text.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = [p.strip() for p in line.replace("|", ",").split(",") if p.strip()]
+            if not parts:
+                continue
+            out.append(
+                {
+                    "name": parts[0],
+                    "qty": _safe_float(parts[1] if len(parts) > 1 else None),
+                    "unit": parts[2] if len(parts) > 2 else "",
+                    "vendor": parts[3] if len(parts) > 3 else "",
+                }
+            )
+        return out
+    return parsed
+
+
+def _project_items(project: Project) -> List[dict]:
+    rows = []
+    for contract in project.contracts:
+        for item in contract.items.order_by(ContractItem.wbs_code.asc(), ContractItem.id.asc()).limit(400):
+            rows.append(
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "wbs": item.wbs_code or item.pms_item_number or "",
+                    "progress": float(item.actual_progress_percentage or 0),
+                    "discipline": item.discipline or item.l4_discipline or "",
+                }
+            )
+    return rows
+
+
+def _accessible_projects() -> List[Project]:
+    if current_user.is_owner:
+        return Project.query.filter_by(status="active").order_by(Project.project_name).limit(100).all()
+    cid = _company_id()
+    if not cid:
+        return []
+    base = Project.query.filter_by(company_id=cid, status="active")
+    if not current_user.is_company_admin:
+        base = (
+            base.join(ProjectMembership)
+            .filter(ProjectMembership.user_id == current_user.id)
+            .filter(ProjectMembership.status == "active")
+        )
+    return base.order_by(Project.project_name).limit(100).all()
+
+
+def _apply_form_to_report(report: DailyReport, form: DailyReportForm) -> None:
+    report.report_date = form.report_date.data
+    report.weather = form.weather.data or None
+    report.temperature_min = form.temperature_min.data
+    report.temperature_max = form.temperature_max.data
+    report.manpower_total = form.manpower_total.data or 0
+    report.manpower_details = _parse_structured(form.manpower_details_raw.data or "", "manpower")
+    report.equipment_details = _parse_structured(form.equipment_details_raw.data or "", "equipment")
+    report.work_performed = form.work_performed.data or None
+    report.progress_updates = _parse_structured(form.progress_updates_raw.data or "", "progress")
+    report.issues_delays = form.issues_delays.data or None
+    report.hse_incidents = form.hse_incidents.data or None
+    report.hse_observations = form.hse_observations.data or None
+    report.near_miss_count = form.near_miss_count.data or 0
+    report.visitors_meetings = form.visitors_meetings.data or None
+    report.notes = form.notes.data or None
+    report.epc_phase = form.epc_phase.data or None
+    report.work_area = form.work_area.data or None
+    report.shift = form.shift.data or None
+    report.lost_time_hours = form.lost_time_hours.data
+    report.materials_received = _parse_structured(form.materials_received_raw.data or "", "materials")
+    if report.manpower_details and not report.manpower_total:
+        report.manpower_total = sum(int(x.get("count") or 0) for x in report.manpower_details)
+
+
+def _hydrate_form(form: DailyReportForm, report: DailyReport) -> None:
+    form.manpower_details_raw.data = dumps_rows(report.manpower_details)
+    form.equipment_details_raw.data = dumps_rows(report.equipment_details)
+    form.progress_updates_raw.data = dumps_rows(report.progress_updates)
+    form.materials_received_raw.data = dumps_rows(report.materials_received)
 
 
 def can_manage_project_reports(project: Project) -> bool:
@@ -164,20 +311,7 @@ def index():
         DailyReport.report_date.desc(), DailyReport.id.desc()
     ).paginate(page=page, per_page=per_page, error_out=False)
 
-    projects = []
-    if current_user.is_owner:
-        projects = Project.query.filter_by(status="active").order_by(Project.project_name).limit(100).all()
-    else:
-        cid = _company_id()
-        if cid:
-            base = Project.query.filter_by(company_id=cid, status="active")
-            if not current_user.is_company_admin:
-                base = (
-                    base.join(ProjectMembership)
-                    .filter(ProjectMembership.user_id == current_user.id)
-                    .filter(ProjectMembership.status == "active")
-                )
-            projects = base.order_by(Project.project_name).limit(100).all()
+    projects = _accessible_projects()
 
     return render_template(
         "daily_reports/list.html",
@@ -188,6 +322,7 @@ def index():
         project_id=project_id,
         projects=projects,
         status_labels=DailyReport.STATUS_LABELS,
+        can_create=bool(projects),
     )
 
 
@@ -209,6 +344,7 @@ def project_list(project_id: int):
         can_submit=can_submit,
         can_approve=can_approve,
         status_labels=DailyReport.STATUS_LABELS,
+        import_form=ImportExcelForm(),
     )
 
 
@@ -224,24 +360,10 @@ def create(project_id: int):
         report = DailyReport(
             company_id=project.company_id,
             project_id=project.id,
-            report_date=form.report_date.data,
-            weather=form.weather.data or None,
-            temperature_min=form.temperature_min.data,
-            temperature_max=form.temperature_max.data,
-            manpower_total=form.manpower_total.data or 0,
-            manpower_details=_parse_lines_to_list(form.manpower_details_raw.data or "", 2),
-            equipment_details=_parse_lines_to_list(form.equipment_details_raw.data or "", 3),
-            work_performed=form.work_performed.data or None,
-            progress_updates=_parse_lines_to_list(form.progress_updates_raw.data or "", 4),
-            issues_delays=form.issues_delays.data or None,
-            hse_incidents=form.hse_incidents.data or None,
-            hse_observations=form.hse_observations.data or None,
-            near_miss_count=form.near_miss_count.data or 0,
-            visitors_meetings=form.visitors_meetings.data or None,
-            notes=form.notes.data or None,
             submitted_by_id=current_user.id,
             status="draft",
         )
+        _apply_form_to_report(report, form)
         db.session.add(report)
         try:
             db.session.flush()
@@ -252,7 +374,12 @@ def create(project_id: int):
                 to_status="draft",
                 comment="ایجاد گزارش روزانه",
             )
-            action = (form.action.data or request.form.get("action") or "save").strip().lower()
+            action = (
+                request.form.get("form_action")
+                or request.form.get("action")
+                or form.action.data
+                or "save"
+            ).strip().lower()
             if action == "submit":
                 report.submit(current_user.id)
             db.session.commit()
@@ -275,6 +402,8 @@ def create(project_id: int):
         project=project,
         title="ثبت گزارش روزانه جدید",
         report=None,
+        contract_items=_project_items(project),
+        import_form=ImportExcelForm(),
     )
 
 
@@ -314,33 +443,17 @@ def edit(report_id: int):
 
     form = DailyReportForm(obj=report)
     if request.method == "GET":
-        form.manpower_details_raw.data = _list_to_raw(report.manpower_details, ["role", "count"])
-        form.equipment_details_raw.data = _list_to_raw(
-            report.equipment_details, ["name", "count", "hours"]
-        )
-        form.progress_updates_raw.data = _list_to_raw(
-            report.progress_updates,
-            ["contract_item_id", "progress_percent", "quantity_done", "notes"],
-        )
+        _hydrate_form(form, report)
 
     if form.validate_on_submit():
-        report.report_date = form.report_date.data
-        report.weather = form.weather.data or None
-        report.temperature_min = form.temperature_min.data
-        report.temperature_max = form.temperature_max.data
-        report.manpower_total = form.manpower_total.data or 0
-        report.manpower_details = _parse_lines_to_list(form.manpower_details_raw.data or "", 2)
-        report.equipment_details = _parse_lines_to_list(form.equipment_details_raw.data or "", 3)
-        report.work_performed = form.work_performed.data or None
-        report.progress_updates = _parse_lines_to_list(form.progress_updates_raw.data or "", 4)
-        report.issues_delays = form.issues_delays.data or None
-        report.hse_incidents = form.hse_incidents.data or None
-        report.hse_observations = form.hse_observations.data or None
-        report.near_miss_count = form.near_miss_count.data or 0
-        report.visitors_meetings = form.visitors_meetings.data or None
-        report.notes = form.notes.data or None
+        _apply_form_to_report(report, form)
 
-        action = (form.action.data or request.form.get("action") or "save").strip().lower()
+        action = (
+            request.form.get("form_action")
+            or request.form.get("action")
+            or form.action.data
+            or "save"
+        ).strip().lower()
         try:
             if action == "submit":
                 report.submit(current_user.id)
@@ -371,6 +484,8 @@ def edit(report_id: int):
         project=report.project,
         title="ویرایش گزارش روزانه",
         report=report,
+        contract_items=_project_items(report.project),
+        import_form=ImportExcelForm(),
     )
 
 
@@ -459,4 +574,105 @@ def delete(report_id: int):
     except SQLAlchemyError:
         db.session.rollback()
         flash("خطا در حذف.", "danger")
+    return redirect(url_for("daily_reports.project_list", project_id=project_id))
+
+
+def _all_contract_items(project: Project) -> List[ContractItem]:
+    items: List[ContractItem] = []
+    for contract in project.contracts:
+        rel = getattr(contract, "items", None)
+        if rel is None:
+            continue
+        try:
+            items.extend(rel.order_by(ContractItem.wbs_code.asc(), ContractItem.id.asc()).limit(500).all())
+        except Exception:
+            items.extend(list(rel)[:500])
+    return items
+
+
+@bp.route("/project/<int:project_id>/template.xlsx")
+def template_xlsx(project_id: int):
+    project = get_project_or_403(project_id)
+    if not can_submit_for_project(project):
+        abort(403)
+    try:
+        wb = build_template_workbook(project, _all_contract_items(project))
+    except RuntimeError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("daily_reports.project_list", project_id=project_id))
+    return xlsx_response(
+        workbook_to_bytes(wb),
+        f"daily_report_template_{project.project_code}.xlsx",
+    )
+
+
+@bp.route("/project/<int:project_id>/export.xlsx")
+def export_xlsx(project_id: int):
+    project = get_project_or_403(project_id)
+    reports = (
+        DailyReport.query.filter_by(project_id=project.id)
+        .order_by(DailyReport.report_date.desc())
+        .limit(200)
+        .all()
+    )
+    try:
+        wb = export_reports_workbook(project, reports)
+    except RuntimeError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("daily_reports.project_list", project_id=project_id))
+    return xlsx_response(
+        workbook_to_bytes(wb),
+        f"daily_reports_{project.project_code}.xlsx",
+    )
+
+
+@bp.route("/project/<int:project_id>/import", methods=["POST"])
+def import_xlsx(project_id: int):
+    project = get_project_or_403(project_id)
+    if not can_submit_for_project(project):
+        flash("شما مجوز ورود گزارش برای این پروژه را ندارید.", "danger")
+        return redirect(url_for("daily_reports.project_list", project_id=project_id))
+
+    form = ImportExcelForm()
+    if not form.validate_on_submit():
+        flash("فایل اکسل معتبر انتخاب نشده است.", "danger")
+        return redirect(url_for("daily_reports.project_list", project_id=project_id))
+
+    try:
+        result = import_daily_reports_from_workbook(
+            project=project,
+            file_storage=form.file.data,
+            user_id=current_user.id,
+            submit_after=bool(form.submit_after.data),
+        )
+        parts = [
+            f"ایجاد: {result['created']}",
+            f"به‌روزرسانی: {result['updated']}",
+        ]
+        if result["untouched"]:
+            parts.append(f"بدون تغییر: {result['untouched']}")
+        if result["skipped"]:
+            parts.append(f"ردیف نامعتبر: {result['skipped']}")
+        flash("ورود اکسل انجام شد — " + " | ".join(parts), "success")
+        for err in result.get("errors") or []:
+            flash(err, "warning")
+        if form.submit_after.data and (result["created"] or result["updated"]):
+            latest = (
+                DailyReport.query.filter_by(project_id=project.id, submitted_by_id=current_user.id)
+                .order_by(DailyReport.id.desc())
+                .first()
+            )
+            if latest and latest.status == "submitted":
+                notify_daily_report_submitted(latest)
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), "danger")
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("Daily report excel import db error")
+        flash("خطای پایگاه داده هنگام ورود اکسل.", "danger")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Daily report excel import failed")
+        flash("فایل اکسل خوانده نشد. از قالب استاندارد استفاده کنید.", "danger")
     return redirect(url_for("daily_reports.project_list", project_id=project_id))
