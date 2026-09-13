@@ -12,13 +12,17 @@ def test_homepage_is_public_and_has_real_ctas(client, app):
     assert "EVM" in html
     assert "گزارش روزانه" in html
     assert "کانسرن" in html
+    assert "کنترل پروژه" in html
     assert "home-modules" in html
     assert "home-skin" in html
     assert "hero" in html
-    assert "bento" in html
+    assert "banner-stage" in html
+    assert "feature-banner" in html
     assert "/pricing" in html
     assert "data-play-cards" not in html
     assert "home-marquee" not in html
+    assert "bento" not in html
+    assert "دفتر فنی" not in html
 
 
 def test_homepage_has_no_fake_metrics_or_quotes(client):
