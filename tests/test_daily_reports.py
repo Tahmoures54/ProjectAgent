@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from pms_app.models import Company, Contract, ContractItem, DailyReport, Project, Role, User
+from pms_app.models import Company, Contract, ContractItem, DailyReport, DailyReportProgress, Project, Role, User
 from pms_app.models.project_membership import ProjectMembership
 
 
@@ -329,3 +329,109 @@ def test_apply_progress_endpoint_rejects_unapproved_report(client, db_session):
     db_session.refresh(report)
     assert report.status == "submitted"
     assert report.progress_applied is False
+
+
+
+def test_progress_traceability_excel_export_preserves_filters_and_scope(client, db_session):
+    from io import BytesIO
+    from openpyxl import load_workbook
+
+    company, project = _company_project(db_session, "TRACE")
+    admin = _user(db_session, "trace_admin", "company_admin", company.id)
+    other_company, other_project = _company_project(db_session, "TRACEOTHER")
+    _user(db_session, "trace_other", "company_admin", other_company.id)
+
+    contract = Contract(
+        company_id=company.id,
+        project_id=project.id,
+        contract_number="CNT-TRACE",
+        contract_title="Trace",
+        contract_type="EPC",
+        pricing_model="lumpsum",
+        currency="IRR",
+        status="active",
+    )
+    db_session.add(contract)
+    db_session.flush()
+    item = ContractItem(
+        company_id=company.id,
+        contract_id=contract.id,
+        title="Pipe Rack",
+        wbs_code="1.2.3",
+        status="open",
+        actual_progress_percentage=40,
+        original_amount=1000,
+        adjusted_amount=1000,
+    )
+    db_session.add(item)
+    db_session.flush()
+
+    report = DailyReport(
+        company_id=company.id,
+        project_id=project.id,
+        report_date=date.today(),
+        submitted_by_id=admin.id,
+        status="approved",
+        progress_applied=True,
+        progress_updates=[{"contract_item_id": item.id, "progress_percent": 40, "quantity_done": 12,
+                           "location": "Unit-3 / Grid A4", "structure_tag": "ST-01", "notes": "Foundation"}],
+    )
+    db_session.add(report)
+    db_session.flush()
+    db_session.add(DailyReportProgress(
+        report_id=report.id,
+        contract_item_id=item.id,
+        company_id=company.id,
+        project_id=project.id,
+        location="Unit-3 / Grid A4",
+        structure_tag="ST-01",
+        progress_percent=40,
+        quantity_done=12,
+        notes="Foundation",
+        applied_by_id=admin.id,
+    ))
+    db_session.add(DailyReportProgress(
+        report_id=report.id,
+        contract_item_id=item.id,
+        company_id=company.id,
+        project_id=project.id,
+        location="Unit-4 / Grid B2",
+        structure_tag="ST-02",
+        progress_percent=45,
+        quantity_done=15,
+        notes="Other location",
+        applied_by_id=admin.id,
+    ))
+    other_report = DailyReport(
+        company_id=other_company.id,
+        project_id=other_project.id,
+        report_date=date.today(),
+        submitted_by_id=admin.id,
+        status="approved",
+        progress_applied=True,
+    )
+    db_session.add(other_report)
+    db_session.commit()
+
+    _login(client, admin.email)
+    response = client.get(
+        f"/daily-reports/progress-traceability/export.xlsx"
+        f"?project_id={project.id}&structure_tag=ST-01"
+    )
+    assert response.status_code == 200
+    assert "spreadsheetml" in response.content_type
+
+    wb = load_workbook(BytesIO(response.data), read_only=True)
+    ws = wb["Progress Traceability"]
+    rows = list(ws.iter_rows(values_only=True))
+    assert rows[0] == (
+        "تاریخ", "پروژه", "شناسه آیتم", "کد WBS", "عنوان آیتم",
+        "لوکیشن", "تگ سازه", "درصد پیشرفت", "مقدار انجام‌شده",
+        "اعمال‌کننده", "زمان ثبت", "یادداشت",
+    )
+    assert len(rows) == 2
+    assert rows[1][1] == project.project_name
+    assert rows[1][3] == "1.2.3"
+    assert rows[1][5] == "Unit-3 / Grid A4"
+    assert rows[1][6] == "ST-01"
+    assert rows[1][11] == "Foundation"
