@@ -228,6 +228,17 @@ class DailyReport(db.Model):
         return self.status in ("submitted", "under_review")
 
     @property
+    def progress_application_status(self) -> str:
+        """وضعیت مستقل اعمال پیشرفت برای جلوگیری از ابهام در EVM."""
+        if not self.progress_updates:
+            return "not_required"
+        if self.progress_applied:
+            return "applied"
+        if self.status == "approved":
+            return "approved_not_applied"
+        return "pending"
+
+    @property
     def is_final(self) -> bool:
         return self.status in ("approved", "rejected")
 
@@ -382,6 +393,7 @@ class DailyReport(db.Model):
             "manpower_total": self.manpower_total,
             "submitted_by": self.submitted_by.full_name or self.submitted_by.email if self.submitted_by else None,
             "submitted_at": self.submitted_at.isoformat() if self.submitted_at else None,
+            "progress_application_status": self.progress_application_status,
         }
 
     def __repr__(self) -> str:
