@@ -89,7 +89,7 @@ def test_daily_report_model_workflow_and_progress(db_session):
         report_date=date.today(),
         submitted_by_id=worker.id,
         work_performed="بتن‌ریزی فونداسیون",
-        progress_updates=[{"contract_item_id": item.id, "progress_percent": 40}],
+        progress_updates=[{"contract_item_id": item.id, "progress_percent": 40, "location": "Unit-3 / Grid A4"}],
         status="draft",
     )
     db_session.add(report)
@@ -264,7 +264,7 @@ def test_approved_report_apply_progress_ui_and_http_action(client, db_session):
         project_id=project.id,
         report_date=date.today(),
         submitted_by_id=worker.id,
-        progress_updates=[{"contract_item_id": item.id, "progress_percent": 60}],
+        progress_updates=[{"contract_item_id": item.id, "progress_percent": 60, "structure_tag": "TK-101"}],
         status="approved",
         progress_applied=False,
     )
