@@ -37,6 +37,7 @@ from .excel import (
     build_template_workbook,
     dumps_rows,
     export_reports_workbook,
+    export_progress_traceability_workbook,
     import_daily_reports_from_workbook,
 )
 from .forms import ApplyProgressForm, DailyReportForm, ImportExcelForm, ReviewForm
@@ -796,6 +797,64 @@ def _all_contract_items(project: Project) -> List[ContractItem]:
         except Exception:
             items.extend(list(rel)[:500])
     return items
+
+
+@bp.route("/progress-traceability/export.xlsx")
+def progress_traceability_export():
+    """Export the same tenant-scoped Progress Traceability view to Excel."""
+    project_id = request.args.get("project_id", type=int)
+    item_id = request.args.get("item_id", type=int)
+    location = request.args.get("location", "").strip()
+    structure_tag = request.args.get("structure_tag", "").strip()
+    date_from_raw = request.args.get("date_from", "").strip()
+    date_to_raw = request.args.get("date_to", "").strip()
+
+    projects = _accessible_projects()
+    accessible_ids = {p.id for p in projects}
+    if project_id and project_id not in accessible_ids:
+        abort(403)
+
+    query = (
+        db.session.query(DailyReportProgress)
+        .join(DailyReport, DailyReportProgress.report_id == DailyReport.id)
+        .join(Project, DailyReportProgress.project_id == Project.id)
+    )
+    if not current_user.is_owner:
+        cid = _company_id()
+        query = query.filter(
+            DailyReportProgress.company_id == cid if cid else db.text("1=0")
+        )
+    query = query.filter(
+        DailyReportProgress.project_id.in_(accessible_ids)
+        if accessible_ids else db.text("1=0")
+    )
+    if project_id:
+        query = query.filter(DailyReportProgress.project_id == project_id)
+    if item_id:
+        query = query.filter(DailyReportProgress.contract_item_id == item_id)
+    if location:
+        query = query.filter(DailyReportProgress.location.ilike("%" + location + "%"))
+    if structure_tag:
+        query = query.filter(DailyReportProgress.structure_tag.ilike("%" + structure_tag + "%"))
+    try:
+        if date_from_raw:
+            query = query.filter(DailyReport.report_date >= date.fromisoformat(date_from_raw))
+        if date_to_raw:
+            query = query.filter(DailyReport.report_date <= date.fromisoformat(date_to_raw))
+    except ValueError:
+        abort(400, description="بازه تاریخ نامعتبر است.")
+
+    rows = query.order_by(
+        DailyReport.report_date.desc(),
+        DailyReportProgress.created_at.desc(),
+        DailyReportProgress.id.desc(),
+    ).limit(5000).all()
+
+    try:
+        wb = export_progress_traceability_workbook(rows)
+    except RuntimeError as exc:
+        abort(503, description=str(exc))
+    return xlsx_response(workbook_to_bytes(wb), "progress_traceability.xlsx")
 
 
 @bp.route("/project/<int:project_id>/template.xlsx")
