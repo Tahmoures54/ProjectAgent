@@ -204,3 +204,102 @@ def test_apply_approved_progress_requires_approved_status(db_session):
         pass
     else:
         raise AssertionError("Unapproved report must not apply progress")
+
+
+def test_daily_report_progress_batch_is_atomic_on_invalid_item(db_session):
+    company = Company(name="EVM Company 9")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(company_id=company.id, project_code="EVM-9", project_name="EVM", status="active")
+    contract = Contract(project_id=project.id, company_id=company.id, contract_number="C9", title="C9")
+    item = ContractItem(contract=contract, company_id=company.id, item_code="I9", description="Work",
+                        original_amount=1000, adjusted_amount=1000, actual_progress_percentage=20)
+    db_session.add_all([project, contract, item])
+    db_session.flush()
+
+    report = DailyReport(
+        company_id=company.id, project_id=project.id, submitted_by_id=1,
+        report_date=date.today(), status="submitted",
+        progress_updates=[
+            {"contract_item_id": item.id, "progress_percent": 80},
+            {"contract_item_id": "not-an-id", "progress_percent": 90},
+        ],
+    )
+    db_session.add(report)
+    db_session.flush()
+
+    try:
+        report.approve(2, comment="invalid batch", apply_progress=True)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Invalid Progress batch must be rejected")
+
+    assert float(item.actual_progress_percentage) == 20.0
+    assert report.status == "approved"
+    assert report.progress_applied is False
+
+
+def test_daily_report_progress_rejects_duplicate_item_ids(db_session):
+    company = Company(name="EVM Company 10")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(company_id=company.id, project_code="EVM-10", project_name="EVM", status="active")
+    contract = Contract(project_id=project.id, company_id=company.id, contract_number="C10", title="C10")
+    item = ContractItem(contract=contract, company_id=company.id, item_code="I10", description="Work",
+                        original_amount=1000, adjusted_amount=1000, actual_progress_percentage=20)
+    db_session.add_all([project, contract, item])
+    db_session.flush()
+
+    report = DailyReport(
+        company_id=company.id, project_id=project.id, submitted_by_id=1,
+        report_date=date.today(), status="submitted",
+        progress_updates=[
+            {"contract_item_id": item.id, "progress_percent": 40},
+            {"contract_item_id": item.id, "progress_percent": 60},
+        ],
+    )
+    db_session.add(report)
+    db_session.flush()
+
+    try:
+        report.approve(2, comment="duplicate", apply_progress=True)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Duplicate Progress item IDs must be rejected")
+
+    assert float(item.actual_progress_percentage) == 20.0
+    assert report.progress_applied is False
+
+
+def test_daily_report_progress_rejects_invalid_quantity(db_session):
+    company = Company(name="EVM Company 11")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(company_id=company.id, project_code="EVM-11", project_name="EVM", status="active")
+    contract = Contract(project_id=project.id, company_id=company.id, contract_number="C11", title="C11")
+    item = ContractItem(contract=contract, company_id=company.id, item_code="I11", description="Work",
+                        original_amount=1000, adjusted_amount=1000, actual_progress_percentage=20,
+                        actual_quantity=10)
+    db_session.add_all([project, contract, item])
+    db_session.flush()
+
+    report = DailyReport(
+        company_id=company.id, project_id=project.id, submitted_by_id=1,
+        report_date=date.today(), status="submitted",
+        progress_updates=[{"contract_item_id": item.id, "progress_percent": 50, "quantity_done": -5}],
+    )
+    db_session.add(report)
+    db_session.flush()
+
+    try:
+        report.approve(2, comment="invalid quantity", apply_progress=True)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Negative quantity must be rejected")
+
+    assert float(item.actual_progress_percentage) == 20.0
+    assert float(item.actual_quantity) == 10.0
+    assert report.progress_applied is False
