@@ -726,3 +726,51 @@ def dumps_rows(rows: Optional[list]) -> str:
     if not rows:
         return "[]"
     return json.dumps(rows, ensure_ascii=False)
+
+
+def export_progress_traceability_workbook(rows):
+    """Build an Excel workbook from already access-controlled progress history rows."""
+    ox = require_openpyxl()
+    if not ox:
+        raise RuntimeError("برای خروجی اکسل باید پکیج openpyxl نصب باشد.")
+    wb = ox["Workbook"]()
+    ws = wb.active
+    ws.title = "Progress Traceability"
+    ws.sheet_view.rightToLeft = True
+    ws.append([
+        "تاریخ",
+        "پروژه",
+        "شناسه آیتم",
+        "کد WBS",
+        "عنوان آیتم",
+        "لوکیشن",
+        "تگ سازه",
+        "درصد پیشرفت",
+        "مقدار انجام‌شده",
+        "اعمال‌کننده",
+        "زمان ثبت",
+        "یادداشت",
+    ])
+    style_header_row(ws, fill_hex="0E7F9B")
+    for row in rows:
+        report = row.report
+        item = row.contract_item
+        applied_by = row.applied_by
+        ws.append([
+            report.report_date.isoformat() if report and report.report_date else "",
+            report.project.project_name if report and report.project else "",
+            row.contract_item_id,
+            item.wbs_code if item else "",
+            item.title if item else "",
+            row.location or "",
+            row.structure_tag or "",
+            float(row.progress_percent) if row.progress_percent is not None else "",
+            float(row.quantity_done) if row.quantity_done is not None else "",
+            (applied_by.full_name or applied_by.email) if applied_by else "",
+            row.created_at.strftime("%Y-%m-%d %H:%M:%S") if row.created_at else "",
+            row.notes or "",
+        ])
+    autosize(ws)
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+    return wb
