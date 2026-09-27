@@ -563,6 +563,25 @@ def review(report_id: int):
     return redirect(url_for("daily_reports.detail", report_id=report_id))
 
 
+@bp.route("/<int:report_id>/apply-progress", methods=["POST"])
+def apply_progress(report_id: int):
+    report = get_report_or_403(report_id)
+    if not can_manage_project_reports(report.project):
+        flash("شما مجوز اعمال پیشرفت این پروژه را ندارید.", "danger")
+        return redirect(url_for("daily_reports.detail", report_id=report_id))
+    try:
+        report.apply_approved_progress()
+        db.session.commit()
+        flash("پیشرفت گزارش با موفقیت روی آیتم‌ها اعمال شد.", "success")
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), "warning")
+    except SQLAlchemyError:
+        db.session.rollback()
+        flash("خطای پایگاه داده هنگام اعمال پیشرفت.", "danger")
+    return redirect(url_for("daily_reports.detail", report_id=report_id))
+
+
 @bp.route("/<int:report_id>/submit", methods=["POST"])
 def submit(report_id: int):
     report = get_report_or_403(report_id)
