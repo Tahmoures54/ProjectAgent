@@ -17,7 +17,7 @@ def test_submitted_daily_report_does_not_change_item_progress(db_session):
     db_session.flush()
     report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
                          report_date=date.today(), status="submitted",
-                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 60}])
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 60, "structure_tag": "ST-01"}])
     db_session.add(report)
     db_session.flush()
     assert float(item.actual_progress_percentage) == 10.0
@@ -36,7 +36,7 @@ def test_final_report_progress_changes_evm(db_session):
     db_session.flush()
     report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
                          report_date=date.today(), status="submitted",
-                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 60}])
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 60, "structure_tag": "ST-01"}])
     db_session.add(report)
     db_session.flush()
     report.approve(2, comment="ok", apply_progress=True)
@@ -60,7 +60,7 @@ def test_approved_daily_report_cannot_regress_progress(db_session):
 
     report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
                          report_date=date.today(), status="submitted",
-                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 40}])
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 40, "structure_tag": "ST-01"}])
     db_session.add(report)
     db_session.flush()
     report.approve(2, comment="stale report", apply_progress=True)
@@ -84,7 +84,7 @@ def test_daily_report_progress_is_clamped_to_zero_and_hundred(db_session):
 
     report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
                          report_date=date.today(), status="submitted",
-                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 150}])
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 150, "structure_tag": "ST-01"}])
     db_session.add(report)
     db_session.flush()
     report.approve(2, comment="clamp", apply_progress=True)
@@ -107,7 +107,7 @@ def test_daily_report_cannot_be_approved_twice(db_session):
 
     report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
                          report_date=date.today(), status="submitted",
-                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 70}])
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 70, "structure_tag": "ST-01"}])
     db_session.add(report)
     db_session.flush()
 
@@ -140,7 +140,7 @@ def test_approved_report_without_progress_application_is_explicit(db_session):
 
     report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
                          report_date=date.today(), status="submitted",
-                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 80}])
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 80, "structure_tag": "ST-01"}])
     db_session.add(report)
     db_session.flush()
 
@@ -169,7 +169,7 @@ def test_approved_report_progress_can_be_applied_later(db_session):
 
     report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
                          report_date=date.today(), status="submitted",
-                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 80}])
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 80, "structure_tag": "ST-01"}])
     db_session.add(report)
     db_session.flush()
     report.approve(2, comment="record only", apply_progress=False)
@@ -221,7 +221,7 @@ def test_daily_report_progress_batch_is_atomic_on_invalid_item(db_session):
         company_id=company.id, project_id=project.id, submitted_by_id=1,
         report_date=date.today(), status="submitted",
         progress_updates=[
-            {"contract_item_id": item.id, "progress_percent": 80},
+            {"contract_item_id": item.id, "progress_percent": 80, "structure_tag": "ST-01"},
             {"contract_item_id": "not-an-id", "progress_percent": 90},
         ],
     )
@@ -255,8 +255,8 @@ def test_daily_report_progress_rejects_duplicate_item_ids(db_session):
         company_id=company.id, project_id=project.id, submitted_by_id=1,
         report_date=date.today(), status="submitted",
         progress_updates=[
-            {"contract_item_id": item.id, "progress_percent": 40},
-            {"contract_item_id": item.id, "progress_percent": 60},
+            {"contract_item_id": item.id, "progress_percent": 40, "structure_tag": "ST-01"},
+            {"contract_item_id": item.id, "progress_percent": 60, "structure_tag": "ST-01"},
         ],
     )
     db_session.add(report)
@@ -288,7 +288,7 @@ def test_daily_report_progress_rejects_invalid_quantity(db_session):
     report = DailyReport(
         company_id=company.id, project_id=project.id, submitted_by_id=1,
         report_date=date.today(), status="submitted",
-        progress_updates=[{"contract_item_id": item.id, "progress_percent": 50, "quantity_done": -5}],
+        progress_updates=[{"contract_item_id": item.id, "progress_percent": 50, "quantity_done": -5, "structure_tag": "ST-01"}],
     )
     db_session.add(report)
     db_session.flush()
