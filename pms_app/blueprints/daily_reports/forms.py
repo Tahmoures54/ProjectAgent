@@ -181,6 +181,12 @@ class ReviewForm(FlaskForm):
     )
 
 
+class ApplyProgressForm(FlaskForm):
+    """فرم امن اعمال پیشرفت گزارش تأییدشده (CSRF)."""
+
+    pass
+
+
 class ImportExcelForm(FlaskForm):
     file = FileField(
         "فایل اکسل",
