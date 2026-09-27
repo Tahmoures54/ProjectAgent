@@ -44,3 +44,50 @@ def test_final_report_progress_changes_evm(db_session):
     assert report.progress_applied is True
     assert float(item.actual_progress_percentage) == 60.0
     assert float(project_evm(project).ev) == 600.0
+
+
+def test_approved_daily_report_cannot_regress_progress(db_session):
+    company = Company(name="EVM Company 3")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(company_id=company.id, project_code="EVM-3", project_name="EVM", status="active")
+    contract = Contract(project_id=project.id, company_id=company.id, contract_number="C3", title="C3")
+    item = ContractItem(contract=contract, company_id=company.id, item_code="I3", description="Work",
+                        original_amount=1000, adjusted_amount=1000, actual_progress_percentage=60,
+                        actual_cost=600)
+    db_session.add_all([project, contract, item])
+    db_session.flush()
+
+    report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
+                         report_date=date.today(), status="submitted",
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 40}])
+    db_session.add(report)
+    db_session.flush()
+    report.approve(2, comment="stale report", apply_progress=True)
+    db_session.flush()
+
+    assert float(item.actual_progress_percentage) == 60.0
+    assert float(project_evm(project).ev) == 600.0
+
+
+def test_daily_report_progress_is_clamped_to_zero_and_hundred(db_session):
+    company = Company(name="EVM Company 4")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(company_id=company.id, project_code="EVM-4", project_name="EVM", status="active")
+    contract = Contract(project_id=project.id, company_id=company.id, contract_number="C4", title="C4")
+    item = ContractItem(contract=contract, company_id=company.id, item_code="I4", description="Work",
+                        original_amount=1000, adjusted_amount=1000, actual_progress_percentage=0,
+                        actual_cost=100)
+    db_session.add_all([project, contract, item])
+    db_session.flush()
+
+    report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
+                         report_date=date.today(), status="submitted",
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 150}])
+    db_session.add(report)
+    db_session.flush()
+    report.approve(2, comment="clamp", apply_progress=True)
+    db_session.flush()
+
+    assert float(item.actual_progress_percentage) == 100.0
