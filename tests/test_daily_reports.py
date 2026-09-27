@@ -438,7 +438,7 @@ def test_progress_traceability_quality_filters_keep_true_delta(client, db_sessio
     html = page.get_data(as_text=True)
     assert "▼ 10.0%" in html
     assert "▲ 40.0%" in html
-    assert "40.0%" not in html.replace("▼ 10.0%", "").replace("▲ 40.0%", "")
+    assert "2 رکورد" in html
     
     export = client.get(
         f"/daily-reports/progress-traceability/export.xlsx?project_id={project.id}&quality=decrease"
