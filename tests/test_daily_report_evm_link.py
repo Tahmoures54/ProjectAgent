@@ -330,3 +330,55 @@ def test_daily_report_progress_requires_location_or_structure_tag(db_session):
         raise AssertionError("Progress must identify a location or structure tag")
     assert float(item.actual_progress_percentage) == 10.0
     assert report.progress_applied is False
+
+
+def test_daily_report_progress_history_records_location_and_structure_tag(db_session):
+    from pms_app.models import DailyReportProgress
+
+    company = Company(name="Co HIST")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(
+        company_id=company.id, project_code="PRJ-HIST", project_name="History",
+        industry="construction", base_currency="IRR", status="active",
+        finish_date=date.today(),
+    )
+    db_session.add(project)
+    db_session.flush()
+    contract = Contract(
+        company_id=company.id, project_id=project.id, contract_number="CNT-HIST",
+        contract_title="Main", contract_type="EPC", pricing_model="lumpsum",
+        currency="IRR", status="active",
+    )
+    db_session.add(contract)
+    db_session.flush()
+    item = ContractItem(
+        company_id=company.id, contract_id=contract.id, title="Pipe Rack",
+        status="open", actual_progress_percentage=10,
+        original_amount=1000, adjusted_amount=1000,
+    )
+    db_session.add(item)
+    db_session.flush()
+    report = DailyReport(
+        company_id=company.id, project_id=project.id, report_date=date.today(),
+        progress_updates=[{
+            "contract_item_id": item.id, "progress_percent": 45,
+            "quantity_done": 12, "location": "Grid B4 / EL+12.000",
+            "structure_tag": "PR-101", "notes": "Erection complete"
+        }],
+        status="approved", progress_applied=False,
+    )
+    db_session.add(report)
+    db_session.commit()
+
+    report.apply_approved_progress()
+    db_session.commit()
+
+    history = DailyReportProgress.query.filter_by(report_id=report.id).one()
+    assert history.contract_item_id == item.id
+    assert history.project_id == project.id
+    assert history.company_id == company.id
+    assert history.location == "Grid B4 / EL+12.000"
+    assert history.structure_tag == "PR-101"
+    assert float(history.progress_percent) == 45.0
+    assert float(history.quantity_done) == 12.0
