@@ -332,6 +332,55 @@ def test_apply_progress_endpoint_rejects_unapproved_report(client, db_session):
 
 
 
+def test_progress_traceability_flags_decrease_and_large_jump(client, db_session):
+    company, project = _company_project(db_session, "QUALITY")
+    admin = _user(db_session, "quality_admin", "company_admin", company.id)
+    contract = Contract(
+        company_id=company.id, project_id=project.id, contract_number="CNT-QUALITY",
+        contract_title="Quality", contract_type="EPC", pricing_model="lumpsum",
+        currency="IRR", status="active",
+    )
+    db_session.add(contract)
+    db_session.flush()
+    item = ContractItem(
+        company_id=company.id, contract_id=contract.id, title="Structure",
+        wbs_code="1.1", status="open", actual_progress_percentage=70,
+        original_amount=1000, adjusted_amount=1000,
+    )
+    db_session.add(item)
+    db_session.flush()
+
+    reports = []
+    for idx, progress in enumerate((40, 30, 70), start=1):
+        report = DailyReport(
+            company_id=company.id, project_id=project.id, report_date=date.today(),
+            submitted_by_id=admin.id, status="approved", progress_applied=True,
+            progress_updates=[],
+        )
+        db_session.add(report)
+        db_session.flush()
+        history = DailyReportProgress(
+            report_id=report.id, contract_item_id=item.id, company_id=company.id,
+            project_id=project.id, location="Unit-A", structure_tag="ST-Q",
+            progress_percent=progress, quantity_done=idx, notes=f"R{idx}",
+            applied_by_id=admin.id, created_at=report.created_at + timedelta(minutes=idx),
+        )
+        db_session.add(history)
+        reports.append(history)
+    db_session.commit()
+
+    _login(client, admin.email)
+    response = client.get(
+        f"/daily-reports/progress-traceability?project_id={project.id}&structure_tag=ST-Q"
+    )
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "کنترل کیفیت Progress" in html
+    assert "مشکوک" in html
+    assert "▼ 10.0%" in html
+    assert "▲ 40.0%" in html
+
+
 def test_progress_traceability_excel_export_preserves_filters_and_scope(client, db_session):
     from io import BytesIO
     from openpyxl import load_workbook
