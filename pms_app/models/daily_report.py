@@ -356,7 +356,12 @@ class DailyReport(db.Model):
             pct = upd.get("progress_percent")
             if pct is not None:
                 try:
-                    item.actual_progress_percentage = Decimal(str(pct))
+                    # Physical progress is monotonic: an older/stale daily report
+                    # must never overwrite a higher progress already recorded.
+                    incoming_pct = Decimal(str(pct))
+                    incoming_pct = max(Decimal("0"), min(Decimal("100"), incoming_pct))
+                    current_pct = Decimal(str(item.actual_progress_percentage or 0))
+                    item.actual_progress_percentage = max(current_pct, incoming_pct)
                 except Exception:
                     pass
             qty = upd.get("quantity_done")
