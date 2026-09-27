@@ -85,7 +85,7 @@ class DailyReport(db.Model):
     work_performed = db.Column(db.Text, nullable=True)
 
     # به‌روزرسانی پیشرفت آیتم‌ها (قبل از تأیید فقط پیشنهادی است)
-    # [{contract_item_id, progress_percent, quantity_done, notes}, ...]
+    # [{contract_item_id, progress_percent, quantity_done, location, structure_tag, notes}, ...]
     progress_updates = db.Column(db.JSON, nullable=True)
 
     # مشکلات، تأخیرات، موانع
@@ -392,6 +392,17 @@ class DailyReport(db.Model):
                 raise ValueError(f"آیتم قراردادی #{item_id} بیش از یک‌بار در Progress ثبت شده است.")
             seen_item_ids.add(item_id)
 
+            location = str(upd.get("location") or "").strip()
+            structure_tag = str(upd.get("structure_tag") or "").strip()
+            if not location and not structure_tag:
+                raise ValueError(
+                    f"برای آیتم قراردادی #{item_id} باید حداقل یکی از «لوکیشن» یا «تگ سازه» ثبت شود."
+                )
+            if len(location) > 160:
+                raise ValueError(f"لوکیشن آیتم #{item_id} بیش از حد طولانی است.")
+            if len(structure_tag) > 120:
+                raise ValueError(f"تگ سازه آیتم #{item_id} بیش از حد طولانی است.")
+
             item = db.session.get(ContractItem, item_id)
             if not item:
                 raise ValueError(f"آیتم قراردادی #{item_id} پیدا نشد.")
@@ -423,10 +434,10 @@ class DailyReport(db.Model):
                 if qty_value < 0:
                     raise ValueError(f"مقدار واقعی آیتم #{item_id} نمی‌تواند منفی باشد.")
 
-            prepared.append((item, pct_value, qty_value))
+            prepared.append((item, pct_value, qty_value, location, structure_tag))
 
         # Apply only after the entire batch passes validation.
-        for item, incoming_pct, qty_value in prepared:
+        for item, incoming_pct, qty_value, location, structure_tag in prepared:
             if incoming_pct is not None:
                 # Physical progress is monotonic: a stale report must never
                 # overwrite a higher progress already recorded.
