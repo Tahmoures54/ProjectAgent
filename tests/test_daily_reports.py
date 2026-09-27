@@ -226,3 +226,99 @@ def test_epc_controls_page(client, db_session):
     html = page.get_data(as_text=True)
     assert "اتاق کنترل" in html
     assert "مهندسی" in html
+
+
+def test_approved_report_apply_progress_ui_and_http_action(client, db_session):
+    import re
+
+    company, project = _company_project(db_session, "APPLYUI")
+    admin = _user(db_session, "apply_ui_admin", "company_admin", company.id)
+    worker = _user(db_session, "apply_ui_worker", "contractor", company.id)
+
+    contract = Contract(
+        company_id=company.id,
+        project_id=project.id,
+        contract_number="CNT-APPLYUI",
+        contract_title="Main",
+        contract_type="EPC",
+        pricing_model="lumpsum",
+        currency="IRR",
+        status="active",
+    )
+    db_session.add(contract)
+    db_session.flush()
+    item = ContractItem(
+        company_id=company.id,
+        contract_id=contract.id,
+        title="Civil Works",
+        status="open",
+        actual_progress_percentage=10,
+        original_amount=1000,
+        adjusted_amount=1000,
+    )
+    db_session.add(item)
+    db_session.flush()
+
+    report = DailyReport(
+        company_id=company.id,
+        project_id=project.id,
+        report_date=date.today(),
+        submitted_by_id=worker.id,
+        progress_updates=[{"contract_item_id": item.id, "progress_percent": 60}],
+        status="approved",
+        progress_applied=False,
+    )
+    db_session.add(report)
+    db_session.commit()
+
+    _login(client, admin.email)
+    detail = client.get(f"/daily-reports/{report.id}")
+    assert detail.status_code == 200
+    html = detail.get_data(as_text=True)
+    assert "پیشرفت این گزارش هنوز روی آیتم‌ها اعمال نشده است" in html
+    assert f'/daily-reports/{report.id}/apply-progress' in html
+    assert "اعمال پیشرفت" in html
+
+    token = re.search(r'name="csrf_token"[^>]*value="([^"]+)"', html)
+    assert token is not None
+
+    response = client.post(
+        f"/daily-reports/{report.id}/apply-progress",
+        data={"csrf_token": token.group(1)},
+        follow_redirects=False,
+    )
+    assert response.status_code in (301, 302)
+
+    db_session.refresh(report)
+    db_session.refresh(item)
+    assert report.progress_applied is True
+    assert report.progress_application_status == "applied"
+    assert float(item.actual_progress_percentage) == 60.0
+
+
+def test_apply_progress_endpoint_rejects_unapproved_report(client, db_session):
+    company, project = _company_project(db_session, "APPLYNO")
+    admin = _user(db_session, "apply_no_admin", "company_admin", company.id)
+    worker = _user(db_session, "apply_no_worker", "contractor", company.id)
+
+    report = DailyReport(
+        company_id=company.id,
+        project_id=project.id,
+        report_date=date.today(),
+        submitted_by_id=worker.id,
+        progress_updates=[],
+        status="submitted",
+        progress_applied=False,
+    )
+    db_session.add(report)
+    db_session.commit()
+
+    _login(client, admin.email)
+    response = client.post(
+        f"/daily-reports/{report.id}/apply-progress",
+        follow_redirects=False,
+    )
+    assert response.status_code in (301, 302)
+    db_session.refresh(report)
+    assert report.status == "submitted"
+    assert report.progress_applied is False
