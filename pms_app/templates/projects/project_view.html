@@ -10,7 +10,7 @@
 ) %}
 
 {% set evm = evm or {} %}
-{% set scurve = scurve or {'labels': [], 'pv': [], 'ev': [], 'ac': []} %}
+{% set scurve = scurve or {'labels': [], 'pv': [], 'ev': [], 'ac': [], 'baseline_valid': false} %}
 
 <div class="min-h-screen bg-slate-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8 transition-colors duration-300" dir="rtl">
     <div class="max-w-7xl mx-auto space-y-8 animate-fadeIn">
@@ -127,9 +127,10 @@
                 <div>
                     <h3 class="text-lg font-black text-gray-800 dark:text-white">نمودار S-Curve</h3>
                     <p class="text-xs text-gray-500 mt-0.5">مقایسه تجمعی PV / EV / AC</p>
+                    {% if not scurve.baseline_valid %}<p class="mt-2 text-xs font-bold text-amber-600">Baseline معتبر ثبت نشده؛ منحنی PV نمایش داده نمی‌شود.</p>{% endif %}
                 </div>
                 <div class="flex items-center gap-4 text-xs font-bold">
-                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500"></span> PV</span>
+                    {% if scurve.baseline_valid %}<span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500"></span> PV</span>{% endif %}
                     <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> EV</span>
                     <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500"></span> AC</span>
                 </div>
