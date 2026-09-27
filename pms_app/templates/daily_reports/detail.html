@@ -105,7 +105,9 @@
           <li class="flex gap-2 flex-wrap">
             <span class="font-mono text-brand-600">#{{ u.contract_item_id }}</span>
             <span>{{ u.progress_percent }}%</span>
-            {% if u.quantity_done %}<span>مقدار: {{ u.quantity_done }}</span>{% endif %}
+            {% if u.quantity_done is not none %}<span>مقدار: {{ u.quantity_done }}</span>{% endif %}
+            {% if u.location %}<span class="pa-pill">📍 {{ u.location }}</span>{% endif %}
+            {% if u.structure_tag %}<span class="pa-pill">🏷 {{ u.structure_tag }}</span>{% endif %}
             {% if u.notes %}<span class="text-slate-500">— {{ u.notes }}</span>{% endif %}
           </li>
           {% endfor %}
