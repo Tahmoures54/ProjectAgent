@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}ردیابی پیشرفت | Project Agent{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6" dir="rtl">
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+    <div>
+      <p class="text-xs font-black tracking-[0.2em] text-brand-500 uppercase mb-1">Progress Traceability</p>
+      <h1 class="text-2xl md:text-3xl font-black text-slate-800 dark:text-white">ردیابی پیشرفت اجراشده</h1>
+      <p class="text-sm text-slate-500 mt-1">ردیابی هر ثبت پیشرفت تا گزارش روزانه، WBS، لوکیشن و تگ سازه</p>
+    </div>
+    <a href="{{ url_for('daily_reports.index') }}" class="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 text-sm font-bold">گزارش‌های روزانه</a>
+  </div>
+
+  <form method="get" class="pa-card p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
+    <div class="xl:col-span-3">
+      <label class="text-xs font-bold text-slate-400 mb-1 block">پروژه</label>
+      <select name="project_id" class="pa-input">
+        <option value="">همه پروژه‌های قابل دسترس</option>
+        {% for p in projects %}
+        <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.project_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="text-xs font-bold text-slate-400 mb-1 block">شناسه آیتم</label>
+      <input name="item_id" type="number" min="1" value="{{ item_id or '' }}" class="pa-input" placeholder="ID">
+    </div>
+    <div class="xl:col-span-2">
+      <label class="text-xs font-bold text-slate-400 mb-1 block">لوکیشن</label>
+      <input name="location" value="{{ location }}" class="pa-input" placeholder="Grid / Area / Elevation">
+    </div>
+    <div class="xl:col-span-2">
+      <label class="text-xs font-bold text-slate-400 mb-1 block">تگ سازه</label>
+      <input name="structure_tag" value="{{ structure_tag }}" class="pa-input" placeholder="ST-03 / TK-101">
+    </div>
+    <div>
+      <label class="text-xs font-bold text-slate-400 mb-1 block">از تاریخ</label>
+      <input name="date_from" type="date" value="{{ date_from }}" class="pa-input">
+    </div>
+    <div>
+      <label class="text-xs font-bold text-slate-400 mb-1 block">تا تاریخ</label>
+      <input name="date_to" type="date" value="{{ date_to }}" class="pa-input">
+    </div>
+    <button class="xl:col-span-1 w-full py-2.5 bg-slate-900 dark:bg-brand-600 text-white rounded-xl text-sm font-bold">فیلتر</button>
+  </form>
+
+  <div class="pa-card overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+      <div>
+        <h2 class="font-black text-slate-800 dark:text-white">سابقه اعمال Progress</h2>
+        <p class="text-xs text-slate-500 mt-1">{{ pagination.total }} رکورد</p>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-[1050px] w-full text-sm">
+        <thead class="bg-slate-50 dark:bg-slate-800/70 text-xs text-slate-500">
+          <tr>
+            <th class="text-right px-4 py-3">تاریخ</th>
+            <th class="text-right px-4 py-3">پروژه / آیتم</th>
+            <th class="text-right px-4 py-3">WBS</th>
+            <th class="text-right px-4 py-3">لوکیشن</th>
+            <th class="text-right px-4 py-3">تگ سازه</th>
+            <th class="text-right px-4 py-3">پیشرفت</th>
+            <th class="text-right px-4 py-3">مقدار</th>
+            <th class="text-right px-4 py-3">اعمال‌کننده</th>
+            <th class="text-right px-4 py-3">گزارش</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+          {% for row in rows %}
+          {% set item = items.get(row.contract_item_id) %}
+          <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="font-bold">{{ row.report.report_date|jalali_long }}</div>
+              <div class="text-[10px] text-slate-400">{{ row.created_at.strftime('%Y-%m-%d %H:%M') if row.created_at else '—' }}</div>
+            </td>
+            <td class="px-4 py-3">
+              <div class="font-bold">{{ row.report.project.project_name if row.report.project else '—' }}</div>
+              <div class="text-xs text-slate-500">#{{ row.contract_item_id }} · {{ item.title if item else '—' }}</div>
+            </td>
+            <td class="px-4 py-3 font-mono text-xs">{{ item.wbs_code if item else '—' }}</td>
+            <td class="px-4 py-3">{{ row.location or '—' }}</td>
+            <td class="px-4 py-3 font-mono">{{ row.structure_tag or '—' }}</td>
+            <td class="px-4 py-3 font-black">{{ row.progress_percent if row.progress_percent is not none else '—' }}%</td>
+            <td class="px-4 py-3">{{ row.quantity_done if row.quantity_done is not none else '—' }}</td>
+            <td class="px-4 py-3">{{ row.applied_by.full_name if row.applied_by else '—' }}</td>
+            <td class="px-4 py-3">
+              <a class="text-brand-600 font-bold hover:underline" href="{{ url_for('daily_reports.detail', report_id=row.report_id) }}">مشاهده</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="9" class="px-5 py-12 text-center text-slate-500">رکوردی با این فیلترها پیدا نشد.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if pagination.pages > 1 %}
+  <div class="flex justify-center items-center gap-2">
+    {% if pagination.has_prev %}
+    <a href="{{ url_for('daily_reports.progress_traceability', page=pagination.prev_num, project_id=project_id, item_id=item_id, location=location, structure_tag=structure_tag, date_from=date_from, date_to=date_to) }}" class="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-sm">قبلی</a>
+    {% endif %}
+    <span class="px-3 py-1 text-sm text-slate-500">صفحه {{ pagination.page }} از {{ pagination.pages }}</span>
+    {% if pagination.has_next %}
+    <a href="{{ url_for('daily_reports.progress_traceability', page=pagination.next_num, project_id=project_id, item_id=item_id, location=location, structure_tag=structure_tag, date_from=date_from, date_to=date_to) }}" class="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-sm">بعدی</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
