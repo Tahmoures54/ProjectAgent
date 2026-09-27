@@ -439,10 +439,10 @@ class DailyReport(db.Model):
                 if qty_value < 0:
                     raise ValueError(f"مقدار واقعی آیتم #{item_id} نمی‌تواند منفی باشد.")
 
-            prepared.append((item, pct_value, qty_value, location, structure_tag))
+            prepared.append((item, pct_value, qty_value, location, structure_tag, str(upd.get("notes") or "").strip()[:2000] or None))
 
         # Apply only after the entire batch passes validation.
-        for item, incoming_pct, qty_value, location, structure_tag in prepared:
+        for item, incoming_pct, qty_value, location, structure_tag, notes in prepared:
             if incoming_pct is not None:
                 # Physical progress is monotonic: a stale report must never
                 # overwrite a higher progress already recorded.
@@ -455,7 +455,7 @@ class DailyReport(db.Model):
                 project_id=self.project_id, location=location or None,
                 structure_tag=structure_tag or None, progress_percent=incoming_pct,
                 quantity_done=qty_value,
-                notes=str(upd.get("notes") or "").strip()[:2000] or None,
+                notes=notes,
                 applied_by_id=self.reviewed_by_id,
             ))
 
