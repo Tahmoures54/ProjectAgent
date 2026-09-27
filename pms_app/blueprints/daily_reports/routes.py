@@ -578,7 +578,18 @@ def apply_progress(report_id: int):
         flash("درخواست اعمال پیشرفت نامعتبر است.", "danger")
         return redirect(url_for("daily_reports.detail", report_id=report_id))
     try:
-        report.apply_approved_progress()
+        # PostgreSQL row-level lock makes the idempotency check safe against
+        # concurrent apply-progress requests. SQLite ignores FOR UPDATE.
+        locked_report = (
+            DailyReport.query.filter(DailyReport.id == report_id)
+            .with_for_update()
+            .first()
+        )
+        if locked_report is None:
+            abort(404)
+        if not can_manage_project_reports(locked_report.project):
+            abort(403)
+        locked_report.apply_approved_progress()
         db.session.commit()
         flash("پیشرفت گزارش با موفقیت روی آیتم‌ها اعمال شد.", "success")
     except ValueError as e:
