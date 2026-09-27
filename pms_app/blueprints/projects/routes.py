@@ -561,7 +561,7 @@ def action_edit(project_id: int, action_id: int):
             action.contract_item_id = None
         _sanitize_action_links(action, project)
         if action.status == "done" and not action.completed_at:
-            action.mark_done(current_user.id, "تغییر وضعیت به انجام‌شده")
+            action.mark_done()
         elif action.status != "done":
             action.completed_at = None
         if old_status != action.status:
