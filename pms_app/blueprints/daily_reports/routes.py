@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from typing import List, Optional
 
 from flask import (
@@ -18,7 +19,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from pms_app.extensions import db
-from pms_app.models.daily_report import DailyReport, DailyReportHistory
+from pms_app.models.daily_report import DailyReport, DailyReportHistory, DailyReportProgress
 from pms_app.models.item import ContractItem
 from pms_app.models.project import Project
 from pms_app.models.project_membership import ProjectMembership
@@ -359,6 +360,58 @@ def index():
         can_create=bool(projects),
     )
 
+
+@bp.route("/progress-traceability")
+def progress_traceability():
+    """گزارش ردیابی Progress اعمال‌شده بر اساس پروژه، WBS، لوکیشن و تگ سازه."""
+    project_id = request.args.get("project_id", type=int)
+    item_id = request.args.get("item_id", type=int)
+    location = request.args.get("location", "").strip()
+    structure_tag = request.args.get("structure_tag", "").strip()
+    date_from_raw = request.args.get("date_from", "").strip()
+    date_to_raw = request.args.get("date_to", "").strip()
+
+    projects = _accessible_projects()
+    accessible_ids = {p.id for p in projects}
+    if project_id and project_id not in accessible_ids:
+        abort(403)
+
+    query = db.session.query(DailyReportProgress).join(DailyReport, DailyReportProgress.report_id == DailyReport.id).join(Project, DailyReportProgress.project_id == Project.id)
+    if not current_user.is_owner:
+        cid = _company_id()
+        if not cid:
+            query = query.filter(db.text("1=0"))
+        else:
+            query = query.filter(DailyReportProgress.company_id == cid)
+    if accessible_ids:
+        query = query.filter(DailyReportProgress.project_id.in_(accessible_ids))
+    else:
+        query = query.filter(db.text("1=0"))
+    if project_id:
+        query = query.filter(DailyReportProgress.project_id == project_id)
+    if item_id:
+        query = query.filter(DailyReportProgress.contract_item_id == item_id)
+    if location:
+        query = query.filter(DailyReportProgress.location.ilike("%" + location + "%"))
+    if structure_tag:
+        query = query.filter(DailyReportProgress.structure_tag.ilike("%" + structure_tag + "%"))
+
+    try:
+        if date_from_raw:
+            query = query.filter(DailyReport.report_date >= date.fromisoformat(date_from_raw))
+        if date_to_raw:
+            query = query.filter(DailyReport.report_date <= date.fromisoformat(date_to_raw))
+    except ValueError:
+        flash("بازه تاریخ نامعتبر است.", "warning")
+
+    query = query.order_by(DailyReport.report_date.desc(), DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+    page = request.args.get("page", 1, type=int)
+    per_page = current_app.config.get("PER_PAGE", 20)
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    item_ids = {r.contract_item_id for r in pagination.items}
+    items = {item.id: item for item in ContractItem.query.filter(ContractItem.id.in_(item_ids)).all()} if item_ids else {}
+    return render_template("daily_reports/progress_traceability.html", rows=pagination.items, pagination=pagination, projects=projects, project_id=project_id, item_id=item_id, location=location, structure_tag=structure_tag, date_from=date_from_raw, date_to=date_to_raw, items=items)
 
 @bp.route("/project/<int:project_id>")
 def project_list(project_id: int):
