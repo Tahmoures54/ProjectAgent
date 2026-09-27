@@ -39,12 +39,12 @@
             <div class="flex flex-wrap items-center gap-2 mb-2"><span class="px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-black">{{ alert.action.status_label }}</span><span class="text-[10px] text-slate-400">Action #{{ alert.action.id }}</span></div>
             {% if alert.action.status not in ['done','cancelled'] %}
               <div class="flex flex-wrap gap-2">
-                <form method="post" action="{{ url_for('daily_reports.control_alert_action') }}"><input type="hidden" name="project_id" value="{{ alert.row.project_id }}"><input type="hidden" name="row_id" value="{{ alert.row.id }}"><input type="hidden" name="alert_type" value="{{ alert.type }}"><input type="hidden" name="command" value="start"><button class="px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold">شروع بررسی</button></form>
+                <form method="post" action="{{ url_for('daily_reports.control_alert_action') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="project_id" value="{{ alert.row.project_id }}"><input type="hidden" name="row_id" value="{{ alert.row.id }}"><input type="hidden" name="alert_type" value="{{ alert.type }}"><input type="hidden" name="command" value="start"><button class="px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold">شروع بررسی</button></form>
                 <form method="post" action="{{ url_for('daily_reports.control_alert_action') }}"><input type="hidden" name="project_id" value="{{ alert.row.project_id }}"><input type="hidden" name="row_id" value="{{ alert.row.id }}"><input type="hidden" name="alert_type" value="{{ alert.type }}"><input type="hidden" name="command" value="resolve"><button class="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold">حل شد</button></form>
               </div>
             {% endif %}
           {% else %}
-            <form method="post" action="{{ url_for('daily_reports.control_alert_action') }}" class="flex flex-wrap gap-2">
+            <form method="post" action="{{ url_for('daily_reports.control_alert_action') }}" class="flex flex-wrap gap-2"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="project_id" value="{{ alert.row.project_id }}"><input type="hidden" name="row_id" value="{{ alert.row.id }}"><input type="hidden" name="alert_type" value="{{ alert.type }}"><input type="hidden" name="command" value="create">
               <button class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold">ایجاد Action</button>
             </form>
