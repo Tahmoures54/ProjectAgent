@@ -41,7 +41,7 @@ from .excel import (
     export_progress_traceability_workbook,
     import_daily_reports_from_workbook,
 )
-from .forms import ApplyProgressForm, DailyReportForm, ImportExcelForm, ReviewForm
+from .forms import ApplyProgressForm, ControlAlertActionForm, DailyReportForm, ImportExcelForm, ReviewForm
 
 
 def _parse_lines_to_list(raw: str, expected_parts: int = 2) -> List[dict]:
@@ -454,6 +454,9 @@ def control_alert_action():
     row_id = request.form.get("row_id", type=int)
     typ = request.form.get("alert_type", "").strip()
     command = request.form.get("command", "").strip()
+    form = ControlAlertActionForm()
+    if not form.validate_on_submit():
+        abort(400, description="درخواست Alert نامعتبر است.")
     project = get_project_or_403(project_id)
     if not can_submit_for_project(project):
         abort(403)
