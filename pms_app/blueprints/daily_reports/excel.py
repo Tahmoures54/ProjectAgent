@@ -766,7 +766,9 @@ def export_progress_traceability_workbook(rows):
         applied_by = row.applied_by
         previous = previous_map.get(row.id)
         current = float(row.progress_percent) if row.progress_percent is not None else None
-        previous_progress = float(previous.progress_percent) if previous and previous.progress_percent is not None else None
+        previous_progress = getattr(row, "_previous_progress", None)
+        if previous_progress is None and previous is not None and previous.progress_percent is not None:
+            previous_progress = float(previous.progress_percent)
         delta = round(current - previous_progress, 2) if current is not None and previous_progress is not None else None
         suspicious = current is None or (delta is not None and (delta < 0 or delta > 25))
         quality = "مشکوک" if suspicious else ("افزایش" if delta and delta > 0 else ("کاهش" if delta and delta < 0 else ("بدون تغییر" if delta == 0 else "اولین ثبت")))
