@@ -38,7 +38,7 @@ from .excel import (
     export_reports_workbook,
     import_daily_reports_from_workbook,
 )
-from .forms import DailyReportForm, ImportExcelForm, ReviewForm
+from .forms import ApplyProgressForm, DailyReportForm, ImportExcelForm, ReviewForm
 
 
 def _parse_lines_to_list(raw: str, expected_parts: int = 2) -> List[dict]:
@@ -448,6 +448,7 @@ def detail(report_id: int):
     can_approve = report.is_pending_approval and can_manage_project_reports(report.project)
     history = report.history.order_by(DailyReportHistory.created_at.asc()).all()
     review_form = ReviewForm() if can_approve else None
+    apply_progress_form = ApplyProgressForm() if can_approve and report.progress_application_status == "approved_not_applied" else None
     return render_template(
         "daily_reports/detail.html",
         report=report,
@@ -455,6 +456,7 @@ def detail(report_id: int):
         can_edit=can_edit,
         can_approve=can_approve,
         review_form=review_form,
+        apply_progress_form=apply_progress_form,
         status_labels=DailyReport.STATUS_LABELS,
     )
 
@@ -568,6 +570,10 @@ def apply_progress(report_id: int):
     report = get_report_or_403(report_id)
     if not can_manage_project_reports(report.project):
         flash("شما مجوز اعمال پیشرفت این پروژه را ندارید.", "danger")
+        return redirect(url_for("daily_reports.detail", report_id=report_id))
+    form = ApplyProgressForm()
+    if not form.validate_on_submit():
+        flash("درخواست اعمال پیشرفت نامعتبر است.", "danger")
         return redirect(url_for("daily_reports.detail", report_id=report_id))
     try:
         report.apply_approved_progress()
