@@ -445,16 +445,18 @@ def detail(report_id: int):
         or current_user.is_owner
         or current_user.is_company_admin
     )
-    can_approve = report.is_pending_approval and can_manage_project_reports(report.project)
+    can_manage = can_manage_project_reports(report.project)
+    can_approve = report.is_pending_approval and can_manage
     history = report.history.order_by(DailyReportHistory.created_at.asc()).all()
     review_form = ReviewForm() if can_approve else None
-    apply_progress_form = ApplyProgressForm() if can_approve and report.progress_application_status == "approved_not_applied" else None
+    apply_progress_form = ApplyProgressForm() if can_manage and report.progress_application_status == "approved_not_applied" else None
     return render_template(
         "daily_reports/detail.html",
         report=report,
         history=history,
         can_edit=can_edit,
         can_approve=can_approve,
+        can_manage=can_manage,
         review_form=review_form,
         apply_progress_form=apply_progress_form,
         status_labels=DailyReport.STATUS_LABELS,
