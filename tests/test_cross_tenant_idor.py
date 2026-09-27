@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from pms_app.models import Company, Concern, DailyReport, Project, Role, User
+from pms_app.models import ActionItem, Company, Concern, DailyReport, DailyReportProgress, Project, Role, User
 from pms_app.models.project_membership import ProjectMembership
 
 
@@ -222,3 +222,33 @@ def test_concern_list_project_filter_cannot_expand_tenant_scope(client, db_sessi
     html = response.get_data(as_text=True)
     assert "SECRET-LIST-A" not in html
     assert "VISIBLE-LIST-B" not in html
+
+
+def test_control_alert_action_idor_is_blocked_across_companies(client, db_session):
+    company_a, project_a = _company_project(db_session, "ALERTA")
+    company_b, project_b = _company_project(db_session, "ALERTB")
+    admin_b = _user(db_session, "idor_alert_b", "company_admin", company_b.id)
+    report_a = DailyReport(
+        company_id=company_a.id, project_id=project_a.id,
+        report_date=date.today(), submitted_by_id=admin_b.id,
+        status="draft", work_performed="A",
+    )
+    db_session.add(report_a)
+    db_session.flush()
+    row_a = DailyReportProgress(
+        report_id=report_a.id, company_id=company_a.id, project_id=project_a.id,
+        contract_item_id=999999, location="A", structure_tag="TAG-A",
+        progress_percent=10, quantity_done=1,
+    )
+    db_session.add(row_a)
+    db_session.add(ProjectMembership(project_id=project_b.id, user_id=admin_b.id, role="admin", status="active"))
+    db_session.commit()
+
+    _login(client, admin_b.email)
+    response = client.post(
+        "/daily-reports/control-alerts/action",
+        data={"project_id": project_a.id, "row_id": row_a.id, "alert_type": "suspicious", "command": "create"},
+        follow_redirects=False,
+    )
+    assert response.status_code in (403, 404)
+    assert ActionItem.query.filter_by(project_id=project_a.id).count() == 0
