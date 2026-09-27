@@ -450,13 +450,13 @@ def control_alerts():
 
 @bp.route("/control-alerts/action", methods=["POST"])
 def control_alert_action():
-    if not current_user.has_permission("projects.write"):
-        abort(403)
     project_id = request.form.get("project_id", type=int)
     row_id = request.form.get("row_id", type=int)
     typ = request.form.get("alert_type", "").strip()
     command = request.form.get("command", "").strip()
     project = get_project_or_403(project_id)
+    if not can_submit_for_project(project):
+        abort(403)
     row = DailyReportProgress.query.filter_by(id=row_id, project_id=project.id).first_or_404()
 
     if command == "create":
