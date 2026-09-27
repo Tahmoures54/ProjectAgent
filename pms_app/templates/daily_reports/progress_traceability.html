@@ -89,13 +89,15 @@
             <th class="text-right px-4 py-3">لوکیشن</th>
             <th class="text-right px-4 py-3">تگ سازه</th>
             <th class="text-right px-4 py-3">پیشرفت</th>
+            <th class="text-right px-4 py-3">تغییر</th>
             <th class="text-right px-4 py-3">مقدار</th>
             <th class="text-right px-4 py-3">اعمال‌کننده</th>
             <th class="text-right px-4 py-3">گزارش</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-          {% for row in rows %}
+          {% for trace in rows %}
+          {% set row = trace.row %}
           {% set item = items.get(row.contract_item_id) %}
           <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
             <td class="px-4 py-3 whitespace-nowrap">
@@ -109,7 +111,8 @@
             <td class="px-4 py-3 font-mono text-xs">{{ item.wbs_code if item else '—' }}</td>
             <td class="px-4 py-3">{{ row.location or '—' }}</td>
             <td class="px-4 py-3 font-mono">{{ row.structure_tag or '—' }}</td>
-            <td class="px-4 py-3 font-black">{{ row.progress_percent if row.progress_percent is not none else '—' }}%</td>
+            <td class="px-4 py-3 font-black">{{ row.progress_percent if row.progress_percent is not none else '—' }}{% if row.progress_percent is not none %}%{% endif %}</td>
+            <td class="px-4 py-3">{% if trace.change == "increase" %}<span class="font-black text-emerald-600">▲ {{ trace.delta }}%</span>{% elif trace.change == "decrease" %}<span class="font-black text-red-600">▼ {{ trace.delta|abs }}%</span>{% elif trace.change == "unchanged" %}<span class="text-slate-400">بدون تغییر</span>{% else %}<span class="text-slate-400">اولین ثبت</span>{% endif %}{% if trace.previous_progress is not none %}<div class="text-[10px] text-slate-400">قبلی: {{ trace.previous_progress }}%</div>{% endif %}</td>
             <td class="px-4 py-3">{{ row.quantity_done if row.quantity_done is not none else '—' }}</td>
             <td class="px-4 py-3">{{ row.applied_by.full_name if row.applied_by else '—' }}</td>
             <td class="px-4 py-3">
@@ -117,7 +120,7 @@
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="9" class="px-5 py-12 text-center text-slate-500">رکوردی با این فیلترها پیدا نشد.</td></tr>
+          <tr><td colspan="10" class="px-5 py-12 text-center text-slate-500">رکوردی با این فیلترها پیدا نشد.</td></tr>
           {% endfor %}
         </tbody>
       </table>
