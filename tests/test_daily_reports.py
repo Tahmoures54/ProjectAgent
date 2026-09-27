@@ -1,7 +1,7 @@
 # tests/test_daily_reports.py
 from __future__ import annotations
 
-from datetime import date, timedelta, timedelta
+from datetime import date, timedelta
 
 from pms_app.models import Company, Contract, ContractItem, DailyReport, DailyReportProgress, Project, Role, User
 from pms_app.models.project_membership import ProjectMembership
