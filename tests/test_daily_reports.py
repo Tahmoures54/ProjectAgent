@@ -396,6 +396,63 @@ def test_progress_traceability_flags_decrease_and_large_jump(client, db_session)
     assert exported_rows[3][13] == "مشکوک"
 
 
+def test_progress_traceability_quality_filters_keep_true_delta(client, db_session):
+    company, project = _company_project(db_session, "QFILTER")
+    admin = _user(db_session, "qfilter_admin", "company_admin", company.id)
+    contract = Contract(
+        company_id=company.id, project_id=project.id, contract_number="CNT-QFILTER",
+        contract_title="Quality Filter", contract_type="EPC", pricing_model="lumpsum",
+        currency="IRR", status="active",
+    )
+    db_session.add(contract)
+    db_session.flush()
+    item = ContractItem(
+        company_id=company.id, contract_id=contract.id, title="Filter Item",
+        wbs_code="2.1", status="open", actual_progress_percentage=50,
+        original_amount=1000, adjusted_amount=1000,
+    )
+    db_session.add(item)
+    db_session.flush()
+
+    for idx, progress in enumerate((40, 30, 70), start=1):
+        report = DailyReport(
+            company_id=company.id, project_id=project.id, report_date=date.today(),
+            submitted_by_id=admin.id, status="approved", progress_applied=True,
+            progress_updates=[],
+        )
+        db_session.add(report)
+        db_session.flush()
+        db_session.add(DailyReportProgress(
+            report_id=report.id, contract_item_id=item.id, company_id=company.id,
+            project_id=project.id, location="Unit-F", structure_tag="ST-F",
+            progress_percent=progress, quantity_done=idx, notes=f"Q{idx}",
+            applied_by_id=admin.id, created_at=report.created_at + timedelta(minutes=idx),
+        ))
+    db_session.commit()
+
+    _login(client, admin.email)
+    page = client.get(
+        f"/daily-reports/progress-traceability?project_id={project.id}&quality=suspicious"
+    )
+    assert page.status_code == 200
+    html = page.get_data(as_text=True)
+    assert "▼ 10.0%" in html
+    assert "▲ 40.0%" in html
+    assert "40.0%" not in html.replace("▼ 10.0%", "").replace("▲ 40.0%", "")
+    
+    export = client.get(
+        f"/daily-reports/progress-traceability/export.xlsx?project_id={project.id}&quality=decrease"
+    )
+    assert export.status_code == 200
+    from io import BytesIO
+    from openpyxl import load_workbook
+    wb = load_workbook(BytesIO(export.data), read_only=True)
+    rows = list(wb["Progress Traceability"].iter_rows(values_only=True))
+    assert len(rows) == 2
+    assert rows[1][12] == -10
+    assert rows[1][13] == "مشکوک"
+
+
 def test_progress_traceability_excel_export_preserves_filters_and_scope(client, db_session):
     from io import BytesIO
     from openpyxl import load_workbook
