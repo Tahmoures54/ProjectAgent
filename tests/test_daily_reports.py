@@ -380,6 +380,21 @@ def test_progress_traceability_flags_decrease_and_large_jump(client, db_session)
     assert "▼ 10.0%" in html
     assert "▲ 40.0%" in html
 
+    from io import BytesIO
+    from openpyxl import load_workbook
+    export_response = client.get(
+        f"/daily-reports/progress-traceability/export.xlsx?project_id={project.id}&structure_tag=ST-Q"
+    )
+    assert export_response.status_code == 200
+    wb = load_workbook(BytesIO(export_response.data), read_only=True)
+    exported_rows = list(wb["Progress Traceability"].iter_rows(values_only=True))
+    assert len(exported_rows) == 4
+    assert exported_rows[1][13] == "مشکوک"
+    assert exported_rows[2][12] == -10
+    assert exported_rows[2][13] == "مشکوک"
+    assert exported_rows[3][12] == 40
+    assert exported_rows[3][13] == "مشکوک"
+
 
 def test_progress_traceability_excel_export_preserves_filters_and_scope(client, db_session):
     from io import BytesIO
