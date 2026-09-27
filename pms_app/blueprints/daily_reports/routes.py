@@ -442,11 +442,37 @@ def progress_traceability():
     per_page = current_app.config.get("PER_PAGE", 20)
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
+    trace_rows = []
+    for row in pagination.items:
+        previous = (
+            DailyReportProgress.query
+            .filter(
+                DailyReportProgress.project_id == row.project_id,
+                DailyReportProgress.contract_item_id == row.contract_item_id,
+                DailyReportProgress.location == row.location,
+                DailyReportProgress.structure_tag == row.structure_tag,
+                DailyReportProgress.created_at < row.created_at,
+            )
+            .order_by(DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+            .first()
+        )
+        current = float(row.progress_percent) if row.progress_percent is not None else None
+        old_value = float(previous.progress_percent) if previous and previous.progress_percent is not None else None
+        if current is None or old_value is None:
+            change, delta = "baseline", None
+        else:
+            delta = round(current - old_value, 2)
+            change = "increase" if delta > 0 else ("decrease" if delta < 0 else "unchanged")
+        trace_rows.append({
+            "row": row, "previous_progress": old_value,
+            "delta": delta, "change": change,
+        })
+
     item_ids = {r.contract_item_id for r in pagination.items}
     items = {item.id: item for item in ContractItem.query.filter(ContractItem.id.in_(item_ids)).all()} if item_ids else {}
     return render_template(
         "daily_reports/progress_traceability.html",
-        rows=pagination.items, pagination=pagination, projects=projects,
+        rows=trace_rows, pagination=pagination, projects=projects,
         project_id=project_id, item_id=item_id, location=location,
         structure_tag=structure_tag, date_from=date_from_raw, date_to=date_to_raw,
         items=items, traceability_summary=traceability_summary,
