@@ -46,6 +46,32 @@
     <button class="xl:col-span-1 w-full py-2.5 bg-slate-900 dark:bg-brand-600 text-white rounded-xl text-sm font-bold">فیلتر</button>
   </form>
 
+  <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
+    <div class="pa-card p-4"><div class="text-xs text-slate-400">رکورد اعمال‌شده</div><div class="text-2xl font-black mt-1">{{ traceability_summary.records }}</div></div>
+    <div class="pa-card p-4"><div class="text-xs text-slate-400">آیتم‌های درگیر</div><div class="text-2xl font-black mt-1">{{ traceability_summary.items }}</div></div>
+    <div class="pa-card p-4"><div class="text-xs text-slate-400">تگ‌های سازه</div><div class="text-2xl font-black mt-1">{{ traceability_summary.tags }}</div></div>
+    <div class="pa-card p-4"><div class="text-xs text-slate-400">بیشترین Progress</div><div class="text-2xl font-black mt-1">{{ traceability_summary.max_progress if traceability_summary.max_progress is not none else '—' }}{% if traceability_summary.max_progress is not none %}%{% endif %}</div></div>
+    <div class="pa-card p-4"><div class="text-xs text-slate-400">جمع مقدار ثبت‌شده</div><div class="text-2xl font-black mt-1">{{ traceability_summary.total_quantity if traceability_summary.total_quantity is not none else '—' }}</div></div>
+    <div class="pa-card p-4"><div class="text-xs text-slate-400">آخرین تاریخ</div><div class="text-lg font-black mt-2">{{ traceability_summary.latest_date|jalali_long if traceability_summary.latest_date else '—' }}</div></div>
+  </div>
+
+  {% if location_summary or tag_summary %}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="pa-card p-5">
+      <h3 class="font-black mb-3">تمرکز Progress بر اساس لوکیشن</h3>
+      {% for loc, count in location_summary %}
+      <div class="flex justify-between py-2 border-b border-slate-100 dark:border-slate-700 text-sm"><span>{{ loc }}</span><span class="font-black">{{ count }}</span></div>
+      {% endfor %}
+    </div>
+    <div class="pa-card p-5">
+      <h3 class="font-black mb-3">تمرکز Progress بر اساس تگ سازه</h3>
+      {% for tag, count in tag_summary %}
+      <div class="flex justify-between py-2 border-b border-slate-100 dark:border-slate-700 text-sm"><span class="font-mono">{{ tag }}</span><span class="font-black">{{ count }}</span></div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <div class="pa-card overflow-hidden">
     <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
       <div>
