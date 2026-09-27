@@ -1,7 +1,7 @@
 # tests/test_daily_reports.py
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, timedelta, timedelta
 
 from pms_app.models import Company, Contract, ContractItem, DailyReport, DailyReportProgress, Project, Role, User
 from pms_app.models.project_membership import ProjectMembership
@@ -428,6 +428,7 @@ def test_progress_traceability_excel_export_preserves_filters_and_scope(client, 
         "تاریخ", "پروژه", "شناسه آیتم", "کد WBS", "عنوان آیتم",
         "لوکیشن", "تگ سازه", "درصد پیشرفت", "مقدار انجام‌شده",
         "اعمال‌کننده", "زمان ثبت", "یادداشت",
+        "تغییر نسبت به ثبت قبل", "وضعیت کنترل کیفیت",
     )
     assert len(rows) == 2
     assert rows[1][1] == project.project_name
@@ -435,3 +436,43 @@ def test_progress_traceability_excel_export_preserves_filters_and_scope(client, 
     assert rows[1][5] == "Unit-3 / Grid A4"
     assert rows[1][6] == "ST-01"
     assert rows[1][11] == "Foundation"
+    assert rows[1][12] == ""
+    assert rows[1][13] == "اولین ثبت"
+
+    # A second record verifies delta/quality classification.
+    report2 = DailyReport(
+        company_id=company.id,
+        project_id=project.id,
+        report_date=date.today(),
+        submitted_by_id=admin.id,
+        status="approved",
+        progress_applied=True,
+        progress_updates=[],
+    )
+    db_session.add(report2)
+    db_session.flush()
+    db_session.add(DailyReportProgress(
+        report_id=report2.id,
+        contract_item_id=item.id,
+        company_id=company.id,
+        project_id=project.id,
+        location="Unit-3 / Grid A4",
+        structure_tag="ST-01",
+        progress_percent=55,
+        quantity_done=18,
+        notes="Steel",
+        applied_by_id=admin.id,
+        created_at=report.created_at + timedelta(minutes=1),
+    ))
+    db_session.commit()
+
+    response = client.get(
+        f"/daily-reports/progress-traceability/export.xlsx"
+        f"?project_id={project.id}&structure_tag=ST-01"
+    )
+    assert response.status_code == 200
+    wb2 = load_workbook(BytesIO(response.data), read_only=True)
+    rows2 = list(wb2["Progress Traceability"].iter_rows(values_only=True))
+    assert len(rows2) == 3
+    assert rows2[1][12] == 15
+    assert rows2[1][13] == "افزایش"
