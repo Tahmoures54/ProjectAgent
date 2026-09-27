@@ -21,6 +21,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from pms_app.extensions import db
 from pms_app.models.daily_report import DailyReport, DailyReportHistory, DailyReportProgress
 from pms_app.models.item import ContractItem
+from pms_app.models.action_item import ActionItem
 from pms_app.models.project import Project
 from pms_app.models.project_membership import ProjectMembership
 from pms_app.utils.excel_io import workbook_to_bytes, xlsx_response
@@ -360,6 +361,158 @@ def index():
         status_labels=DailyReport.STATUS_LABELS,
         can_create=bool(projects),
     )
+
+
+@bp.route("/control-alerts")
+def control_alerts():
+    """مرکز هشدارهای مشتق‌شده از Progress Traceability."""
+    project_id = request.args.get("project_id", type=int)
+    severity = request.args.get("severity", "").strip().lower()
+    alert_type = request.args.get("type", "").strip().lower()
+    projects = _accessible_projects()
+    accessible_ids = {p.id for p in projects}
+    if project_id and project_id not in accessible_ids:
+        abort(403)
+
+    q = DailyReportProgress.query
+    if accessible_ids:
+        q = q.filter(DailyReportProgress.project_id.in_(accessible_ids))
+    else:
+        q = q.filter(db.text("1=0"))
+    if project_id:
+        q = q.filter(DailyReportProgress.project_id == project_id)
+    rows = q.order_by(DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc()).limit(1000).all()
+
+    alerts = []
+    for row in rows:
+        previous = (
+            DailyReportProgress.query
+            .filter(
+                DailyReportProgress.project_id == row.project_id,
+                DailyReportProgress.contract_item_id == row.contract_item_id,
+                DailyReportProgress.location == row.location,
+                DailyReportProgress.structure_tag == row.structure_tag,
+                DailyReportProgress.created_at < row.created_at,
+            )
+            .order_by(DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+            .first()
+        )
+        current = float(row.progress_percent) if row.progress_percent is not None else None
+        old = float(previous.progress_percent) if previous and previous.progress_percent is not None else None
+        delta = None if current is None or old is None else round(current - old, 2)
+        stale = (date.today() - row.created_at.date()).days > 2
+        candidates = []
+        if current is None or (delta is not None and delta > 25):
+            candidates.append(("suspicious", "high", "Progress غیرعادی", "تغییر Progress بیش از حد مجاز یا مقدار نامعتبر است."))
+        if delta is not None and delta < 0:
+            candidates.append(("decrease", "high", "کاهش Progress", "Progress نسبت به ثبت قبلی کاهش یافته است."))
+        if stale:
+            candidates.append(("stale", "medium", "Progress قدیمی", f"آخرین ثبت این رکورد {max(0, (date.today() - row.created_at.date()).days)} روز قبل بوده است."))
+        if row.quantity_done is not None and float(row.quantity_done) < 0:
+            candidates.append(("quantity", "high", "Quantity منفی", "مقدار Quantity نمی‌تواند منفی باشد."))
+        if not row.location or not row.structure_tag:
+            candidates.append(("scope", "medium", "Scope ناقص", "Location یا Structure Tag ثبت نشده است."))
+
+        item = db.session.get(ContractItem, row.contract_item_id)
+        project = db.session.get(Project, row.project_id)
+        for typ, sev, title, reason in candidates:
+            if severity and sev != severity:
+                continue
+            if alert_type and typ != alert_type:
+                continue
+            action = (
+                ActionItem.query
+                .filter_by(project_id=row.project_id, contract_item_id=row.contract_item_id)
+                .filter(ActionItem.description.ilike(f"%Progress Alert row={row.id} type={typ}%"))
+                .order_by(ActionItem.id.desc())
+                .first()
+            )
+            alerts.append({
+                "type": typ, "severity": sev, "title": title, "reason": reason,
+                "row": row, "project": project, "item": item, "delta": delta,
+                "action": action,
+            })
+
+    severity_rank = {"high": 0, "medium": 1, "low": 2}
+    alerts.sort(key=lambda a: (severity_rank.get(a["severity"], 9), a["row"].created_at), reverse=False)
+    summary = {
+        "total": len(alerts),
+        "high": sum(1 for a in alerts if a["severity"] == "high"),
+        "medium": sum(1 for a in alerts if a["severity"] == "medium"),
+        "low": sum(1 for a in alerts if a["severity"] == "low"),
+    }
+    return render_template(
+        "daily_reports/control_alerts.html",
+        alerts=alerts, summary=summary, projects=projects,
+        project_id=project_id, severity=severity, alert_type=alert_type,
+    )
+
+
+@bp.route("/control-alerts/action", methods=["POST"])
+def control_alert_action():
+    project_id = request.form.get("project_id", type=int)
+    row_id = request.form.get("row_id", type=int)
+    typ = request.form.get("alert_type", "").strip()
+    command = request.form.get("command", "").strip()
+    project = get_project_or_403(project_id)
+    row = DailyReportProgress.query.filter_by(id=row_id, project_id=project.id).first_or_404()
+
+    if command == "create":
+        title_map = {
+            "suspicious": "بررسی Progress غیرعادی",
+            "decrease": "بررسی کاهش Progress",
+            "stale": "به‌روزرسانی Progress قدیمی",
+            "scope": "تکمیل Scope Progress",
+            "quantity": "اصلاح Quantity منفی",
+        }
+        title = title_map.get(typ, "بررسی هشدار کنترل پروژه")
+        marker = f"Progress Alert row={row.id} type={typ}"
+        action = (
+            ActionItem.query
+            .filter_by(project_id=project.id, contract_item_id=row.contract_item_id)
+            .filter(ActionItem.description.ilike(f"%{marker}%"))
+            .first()
+        )
+        if not action:
+            action = ActionItem(
+                company_id=project.company_id, project_id=project.id,
+                contract_item_id=row.contract_item_id, title=title,
+                description=f"{marker} | location={row.location or '-'} | tag={row.structure_tag or '-'}",
+                status="open", priority="critical" if typ in ("suspicious", "decrease", "quantity") else "high",
+                created_by_id=current_user.id,
+            )
+            db.session.add(action)
+            db.session.flush()
+            action.add_history(user_id=current_user.id, action="created", to_status="open", note=marker)
+            flash("هشدار به Action تبدیل شد.", "success")
+        else:
+            flash("برای این هشدار Action قبلاً ایجاد شده است.", "info")
+    elif command in {"start", "resolve"}:
+        action = (
+            ActionItem.query
+            .filter_by(project_id=project.id, contract_item_id=row.contract_item_id)
+            .filter(ActionItem.description.ilike(f"%Progress Alert row={row.id} type={typ}%"))
+            .order_by(ActionItem.id.desc()).first()
+        )
+        if not action:
+            flash("ابتدا Action هشدار را ایجاد کنید.", "warning")
+        else:
+            old = action.status
+            if command == "start" and old not in ("done", "cancelled"):
+                action.status = "in_progress"
+                action.add_history(user_id=current_user.id, action="status_change", from_status=old, to_status="in_progress")
+                flash("Action وارد مرحله بررسی شد.", "success")
+            elif command == "resolve" and old not in ("done", "cancelled"):
+                action.mark_done(current_user.id, "حل هشدار کنترل پروژه")
+                flash("هشدار حل‌شده ثبت شد.", "success")
+    else:
+        abort(400)
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        flash("خطا در ذخیره Action.", "danger")
+    return redirect(url_for("daily_reports.control_alerts", project_id=project.id))
 
 
 @bp.route("/progress-traceability")
