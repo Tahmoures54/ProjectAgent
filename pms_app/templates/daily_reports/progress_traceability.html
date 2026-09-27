@@ -10,6 +10,7 @@
       <p class="text-sm text-slate-500 mt-1">ردیابی هر ثبت پیشرفت تا گزارش روزانه، WBS، لوکیشن و تگ سازه</p>
     </div>
     <a href="{{ url_for('daily_reports.index') }}" class="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 text-sm font-bold">گزارش‌های روزانه</a>
+    <a href="{{ url_for('daily_reports.progress_traceability_export', project_id=project_id, item_id=item_id, location=location, structure_tag=structure_tag, date_from=date_from, date_to=date_to) }}" class="px-4 py-2.5 rounded-2xl bg-brand-600 text-white text-sm font-bold">خروجی Excel</a>
   </div>
 
   <form method="get" class="pa-card p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
