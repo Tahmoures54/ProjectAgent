@@ -1,0 +1,46 @@
+from datetime import date
+from types import SimpleNamespace
+
+from pms_app.models import Company, Contract, ContractItem, DailyReport, Project
+from pms_app.utils.evm import project_evm
+
+def test_submitted_daily_report_does_not_change_item_progress(db_session):
+    company = Company(name="EVM Company")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(company_id=company.id, project_code="EVM-1", project_name="EVM", status="active")
+    contract = Contract(project_id=project.id, company_id=company.id, contract_number="C1", title="C1")
+    item = ContractItem(contract=contract, company_id=company.id, item_code="I1", description="Work",
+                        original_amount=1000, adjusted_amount=1000, actual_progress_percentage=10,
+                        actual_cost=100)
+    db_session.add_all([project, contract, item])
+    db_session.flush()
+    report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
+                         report_date=date.today(), status="submitted",
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 60}])
+    db_session.add(report)
+    db_session.flush()
+    assert float(item.actual_progress_percentage) == 10.0
+    assert float(project_evm(project).ev) == 100.0
+
+def test_final_report_progress_changes_evm(db_session):
+    company = Company(name="EVM Company 2")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(company_id=company.id, project_code="EVM-2", project_name="EVM", status="active")
+    contract = Contract(project_id=project.id, company_id=company.id, contract_number="C2", title="C2")
+    item = ContractItem(contract=contract, company_id=company.id, item_code="I2", description="Work",
+                        original_amount=1000, adjusted_amount=1000, actual_progress_percentage=10,
+                        actual_cost=100)
+    db_session.add_all([project, contract, item])
+    db_session.flush()
+    report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
+                         report_date=date.today(), status="submitted",
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 60}])
+    db_session.add(report)
+    db_session.flush()
+    report.approve(2, comment="ok", apply_progress=True)
+    db_session.flush()
+    assert report.progress_applied is True
+    assert float(item.actual_progress_percentage) == 60.0
+    assert float(project_evm(project).ev) == 600.0
