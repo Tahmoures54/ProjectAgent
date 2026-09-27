@@ -47,6 +47,27 @@
     </div>
 
     <div class="p-6 space-y-5">
+      {% if report.progress_application_status == 'approved_not_applied' %}
+      <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <p class="font-black text-amber-800 dark:text-amber-300">پیشرفت این گزارش هنوز روی آیتم‌ها اعمال نشده است.</p>
+          <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">گزارش تأیید شده و آماده اعمال Progress است؛ پس از اعمال، EVM پروژه نیز بر اساس پیشرفت ثبت‌شده به‌روز می‌شود.</p>
+        </div>
+        {% if can_manage and apply_progress_form %}
+        <form method="post" action="{{ url_for('daily_reports.apply_progress', report_id=report.id) }}" class="shrink-0">
+          {{ apply_progress_form.hidden_tag() }}
+          <button type="submit" class="px-5 py-2.5 rounded-2xl bg-brand-600 text-white text-sm font-bold hover:bg-brand-700">
+            <i class="fas fa-chart-line ml-1"></i> اعمال پیشرفت
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      {% elif report.progress_application_status == 'applied' %}
+      <div class="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+        <i class="fas fa-check-circle ml-1"></i> پیشرفت این گزارش روی آیتم‌ها اعمال شده است.
+      </div>
+      {% endif %}
+
       {% if report.manpower_details %}
       <div>
         <h4 class="text-xs font-bold text-slate-400 mb-2">جزئیات نیروی انسانی</h4>
@@ -84,7 +105,9 @@
           <li class="flex gap-2 flex-wrap">
             <span class="font-mono text-brand-600">#{{ u.contract_item_id }}</span>
             <span>{{ u.progress_percent }}%</span>
-            {% if u.quantity_done %}<span>مقدار: {{ u.quantity_done }}</span>{% endif %}
+            {% if u.quantity_done is not none %}<span>مقدار: {{ u.quantity_done }}</span>{% endif %}
+            {% if u.location %}<span class="pa-pill">📍 {{ u.location }}</span>{% endif %}
+            {% if u.structure_tag %}<span class="pa-pill">🏷 {{ u.structure_tag }}</span>{% endif %}
             {% if u.notes %}<span class="text-slate-500">— {{ u.notes }}</span>{% endif %}
           </li>
           {% endfor %}

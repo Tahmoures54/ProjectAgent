@@ -61,6 +61,8 @@ PROGRESS_ALIASES = {
     "wbs_code": ("wbs_code", "wbs", "کدwbs", "کدآیتم", "کدفالیت"),
     "progress_percent": ("progress_percent", "progress", "درصد", "درصدپیشرفت"),
     "quantity_done": ("quantity_done", "qty", "مقدار", "مقدارانجامشده"),
+    "location": ("location", "work_area", "area", "لوکیشن", "محل", "ناحیه", "جبهه"),
+    "structure_tag": ("structure_tag", "structure", "tag", "تگسازه", "تگ", "کدسازه"),
     "notes": ("notes", "یادداشت", "شرح"),
 }
 
@@ -255,7 +257,7 @@ def build_template_workbook(project, items: Optional[List[ContractItem]] = None)
     autosize(eq)
 
     pr = wb.create_sheet("پیشرفت")
-    pr.append(["تاریخ", "شناسه آیتم", "کد WBS", "درصد پیشرفت", "مقدار انجام‌شده", "یادداشت"])
+    pr.append(["تاریخ", "شناسه آیتم", "کد WBS", "درصد پیشرفت", "مقدار انجام‌شده", "لوکیشن", "تگ سازه", "یادداشت"])
     style_header_row(pr, fill_hex="4F46E5")
     if items:
         for it in items[:8]:
@@ -265,12 +267,13 @@ def build_template_workbook(project, items: Optional[List[ContractItem]] = None)
                     it.id,
                     it.wbs_code or it.pms_item_number or "",
                     float(it.actual_progress_percentage or 0),
-                    "",
+                    "ناحیه A",
+                    "ST-01",
                     it.title,
                 ]
             )
     else:
-        pr.append([today, "", "1.2.3", 35, 12, "نمونه — کد WBS را با آیتم پروژه جایگزین کنید"])
+        pr.append([today, "", "1.2.3", 35, 12, "ناحیه A", "ST-01", "نمونه — کد WBS را با آیتم پروژه جایگزین کنید"])
     autosize(pr)
 
     mat = wb.create_sheet("مصالح")
@@ -376,7 +379,7 @@ def export_reports_workbook(project, reports: List[DailyReport]):
     eq.append(["تاریخ", "نام", "تعداد", "ساعت کار"])
     style_header_row(eq, fill_hex="D97706")
     pr = wb.create_sheet("پیشرفت")
-    pr.append(["تاریخ", "شناسه آیتم", "درصد", "مقدار", "یادداشت"])
+    pr.append(["تاریخ", "شناسه آیتم", "درصد", "مقدار", "لوکیشن", "تگ سازه", "یادداشت"])
     style_header_row(pr, fill_hex="4F46E5")
     mat = wb.create_sheet("مصالح")
     mat.append(["تاریخ", "نام", "مقدار", "واحد", "تأمین‌کننده"])
@@ -397,6 +400,8 @@ def export_reports_workbook(project, reports: List[DailyReport]):
                     row.get("contract_item_id"),
                     row.get("progress_percent"),
                     row.get("quantity_done"),
+                    row.get("location"),
+                    row.get("structure_tag"),
                     row.get("notes"),
                 ]
             )
@@ -564,6 +569,8 @@ def import_daily_reports_from_workbook(
                 "contract_item_id": item.id if item else to_int(cell(row, ix, "contract_item_id")),
                 "progress_percent": to_float(cell(row, ix, "progress_percent")),
                 "quantity_done": to_float(cell(row, ix, "quantity_done")),
+                "location": str(cell(row, ix, "location") or "").strip(),
+                "structure_tag": str(cell(row, ix, "structure_tag") or "").strip(),
                 "notes": str(notes),
                 "wbs_code": str(cell(row, ix, "wbs_code") or ""),
             }
@@ -719,3 +726,69 @@ def dumps_rows(rows: Optional[list]) -> str:
     if not rows:
         return "[]"
     return json.dumps(rows, ensure_ascii=False)
+
+
+def export_progress_traceability_workbook(rows):
+    """Build an Excel workbook from already access-controlled progress history rows."""
+    ox = require_openpyxl()
+    if not ox:
+        raise RuntimeError("برای خروجی اکسل باید پکیج openpyxl نصب باشد.")
+    wb = ox["Workbook"]()
+    ws = wb.active
+    ws.title = "Progress Traceability"
+    ws.sheet_view.rightToLeft = True
+    ws.append([
+        "تاریخ",
+        "پروژه",
+        "شناسه آیتم",
+        "کد WBS",
+        "عنوان آیتم",
+        "لوکیشن",
+        "تگ سازه",
+        "درصد پیشرفت",
+        "مقدار انجام‌شده",
+        "اعمال‌کننده",
+        "زمان ثبت",
+        "یادداشت",
+        "تغییر نسبت به ثبت قبل",
+        "وضعیت کنترل کیفیت",
+    ])
+    style_header_row(ws, fill_hex="0E7F9B")
+    previous_map = {}
+    for row in sorted(rows, key=lambda r: (r.project_id, r.contract_item_id, r.location or "", r.structure_tag or "", r.created_at, r.id)):
+        key = (row.project_id, row.contract_item_id, row.location or "", row.structure_tag or "")
+        previous_map[row.id] = previous_map.get(key)
+        previous_map[key] = row
+
+    for row in rows:
+        report = row.report
+        item = row.contract_item
+        applied_by = row.applied_by
+        previous = previous_map.get(row.id)
+        current = float(row.progress_percent) if row.progress_percent is not None else None
+        previous_progress = getattr(row, "_previous_progress", None)
+        if previous_progress is None and previous is not None and previous.progress_percent is not None:
+            previous_progress = float(previous.progress_percent)
+        delta = round(current - previous_progress, 2) if current is not None and previous_progress is not None else None
+        suspicious = current is None or (delta is not None and (delta < 0 or delta > 25))
+        quality = "مشکوک" if suspicious else ("افزایش" if delta and delta > 0 else ("کاهش" if delta and delta < 0 else ("بدون تغییر" if delta == 0 else "اولین ثبت")))
+        ws.append([
+            report.report_date.isoformat() if report and report.report_date else "",
+            report.project.project_name if report and report.project else "",
+            row.contract_item_id,
+            item.wbs_code if item else "",
+            item.title if item else "",
+            row.location or "",
+            row.structure_tag or "",
+            float(row.progress_percent) if row.progress_percent is not None else "",
+            float(row.quantity_done) if row.quantity_done is not None else "",
+            (applied_by.full_name or applied_by.email) if applied_by else "",
+            row.created_at.strftime("%Y-%m-%d %H:%M:%S") if row.created_at else "",
+            row.notes or "",
+            delta if delta is not None else "",
+            quality,
+        ])
+    autosize(ws)
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+    return wb

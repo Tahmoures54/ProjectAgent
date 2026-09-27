@@ -21,6 +21,14 @@ def _f(v, default=0.0) -> float:
 
 
 def _item_bac(item) -> float:
+    """Return the same BAC definition used by the EVM engine.
+
+    Contract items may expose a computed ``bac`` (for example quantity ×
+    unit price). Prefer it so dashboard progress and EVM cannot disagree.
+    """
+    computed = getattr(item, "bac", None)
+    if computed is not None:
+        return _f(computed)
     if getattr(item, "adjusted_amount", None) is not None:
         return _f(item.adjusted_amount)
     return _f(getattr(item, "original_amount", None))

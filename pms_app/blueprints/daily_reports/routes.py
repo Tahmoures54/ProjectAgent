@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from typing import List, Optional
 
 from flask import (
@@ -14,12 +15,13 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from pms_app.extensions import db
-from pms_app.models.daily_report import DailyReport, DailyReportHistory
+from pms_app.models.daily_report import DailyReport, DailyReportHistory, DailyReportProgress
 from pms_app.models.item import ContractItem
+from pms_app.models.action_item import ActionItem
 from pms_app.models.project import Project
 from pms_app.models.project_membership import ProjectMembership
 from pms_app.utils.excel_io import workbook_to_bytes, xlsx_response
@@ -36,9 +38,10 @@ from .excel import (
     build_template_workbook,
     dumps_rows,
     export_reports_workbook,
+    export_progress_traceability_workbook,
     import_daily_reports_from_workbook,
 )
-from .forms import DailyReportForm, ImportExcelForm, ReviewForm
+from .forms import ApplyProgressForm, ControlAlertActionForm, DailyReportForm, ImportExcelForm, ReviewForm
 
 
 def _parse_lines_to_list(raw: str, expected_parts: int = 2) -> List[dict]:
@@ -62,13 +65,15 @@ def _parse_lines_to_list(raw: str, expected_parts: int = 2) -> List[dict]:
                     "hours": _safe_float(parts[2] if len(parts) > 2 else 0),
                 }
             )
-        elif expected_parts == 4:
+        elif expected_parts == 6:
             result.append(
                 {
                     "contract_item_id": _safe_int(parts[0]),
                     "progress_percent": _safe_float(parts[1] if len(parts) > 1 else None),
                     "quantity_done": _safe_float(parts[2] if len(parts) > 2 else None),
-                    "notes": parts[3] if len(parts) > 3 else "",
+                    "location": parts[3] if len(parts) > 3 else "",
+                    "structure_tag": parts[4] if len(parts) > 4 else "",
+                    "notes": parts[5] if len(parts) > 5 else "",
                 }
             )
     return result
@@ -132,6 +137,8 @@ def _parse_structured(raw: str, kind: str) -> List[dict]:
                             "contract_item_id": _safe_int(it.get("contract_item_id") or it.get("id")),
                             "progress_percent": _safe_float(it.get("progress_percent")),
                             "quantity_done": _safe_float(it.get("quantity_done")),
+                            "location": str(it.get("location") or it.get("work_area") or "").strip(),
+                            "structure_tag": str(it.get("structure_tag") or it.get("tag") or "").strip(),
                             "notes": it.get("notes") or "",
                             "wbs_code": it.get("wbs_code") or "",
                         }
@@ -160,7 +167,7 @@ def _parse_structured(raw: str, kind: str) -> List[dict]:
                         }
                     )
             return rows
-    expected = {"manpower": 2, "equipment": 3, "progress": 4, "materials": 4, "engineering": 3}.get(kind, 2)
+    expected = {"manpower": 2, "equipment": 3, "progress": 6, "materials": 4, "engineering": 3}.get(kind, 2)
     parsed = _parse_lines_to_list(text, expected)
     if kind == "materials":
         out = []
@@ -356,6 +363,247 @@ def index():
     )
 
 
+@bp.route("/control-alerts/action", methods=["POST"])
+def control_alert_action():
+    project_id = request.form.get("project_id", type=int)
+    row_id = request.form.get("row_id", type=int)
+    typ = request.form.get("alert_type", "").strip()
+    command = request.form.get("command", "").strip()
+    form = ControlAlertActionForm()
+    if not form.validate_on_submit():
+        abort(400, description="درخواست Alert نامعتبر است.")
+    project = get_project_or_403(project_id)
+    if not can_submit_for_project(project):
+        abort(403)
+    row = DailyReportProgress.query.filter_by(id=row_id, project_id=project.id).first_or_404()
+
+    if command == "create":
+        title_map = {
+            "suspicious": "بررسی Progress غیرعادی",
+            "decrease": "بررسی کاهش Progress",
+            "stale": "به‌روزرسانی Progress قدیمی",
+            "scope": "تکمیل Scope Progress",
+            "quantity": "اصلاح Quantity منفی",
+        }
+        title = title_map.get(typ, "بررسی هشدار کنترل پروژه")
+        marker = f"Progress Alert row={row.id} type={typ}"
+        action = (
+            ActionItem.query
+            .filter_by(project_id=project.id, contract_item_id=row.contract_item_id)
+            .filter(ActionItem.description.ilike(f"%{marker}%"))
+            .first()
+        )
+        if not action:
+            action = ActionItem(
+                company_id=project.company_id, project_id=project.id,
+                contract_item_id=row.contract_item_id, title=title,
+                description=f"{marker} | location={row.location or '-'} | tag={row.structure_tag or '-'}",
+                status="open", priority="critical" if typ in ("suspicious", "decrease", "quantity") else "high",
+                created_by_id=current_user.id,
+            )
+            db.session.add(action)
+            db.session.flush()
+            action.add_history(user_id=current_user.id, action="created", to_status="open", note=marker)
+            flash("هشدار به Action تبدیل شد.", "success")
+        else:
+            flash("برای این هشدار Action قبلاً ایجاد شده است.", "info")
+    elif command in {"start", "resolve"}:
+        action = (
+            ActionItem.query
+            .filter_by(project_id=project.id, contract_item_id=row.contract_item_id)
+            .filter(ActionItem.description.ilike(f"%Progress Alert row={row.id} type={typ}%"))
+            .order_by(ActionItem.id.desc()).first()
+        )
+        if not action:
+            flash("ابتدا Action هشدار را ایجاد کنید.", "warning")
+        else:
+            old = action.status
+            if command == "start" and old not in ("done", "cancelled"):
+                action.status = "in_progress"
+                action.add_history(user_id=current_user.id, action="status_change", from_status=old, to_status="in_progress")
+                flash("Action وارد مرحله بررسی شد.", "success")
+            elif command == "resolve" and old not in ("done", "cancelled"):
+                action.mark_done(current_user.id, "حل هشدار کنترل پروژه")
+                flash("هشدار حل‌شده ثبت شد.", "success")
+    else:
+        abort(400)
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        flash("خطا در ذخیره Action.", "danger")
+    return redirect(url_for("daily_reports.control_alerts", project_id=project.id))
+
+
+@bp.route("/progress-traceability")
+def progress_traceability():
+    """گزارش ردیابی Progress اعمال‌شده بر اساس پروژه، WBS، لوکیشن و تگ سازه."""
+    project_id = request.args.get("project_id", type=int)
+    item_id = request.args.get("item_id", type=int)
+    location = request.args.get("location", "").strip()
+    structure_tag = request.args.get("structure_tag", "").strip()
+    date_from_raw = request.args.get("date_from", "").strip()
+    date_to_raw = request.args.get("date_to", "").strip()
+    quality = request.args.get("quality", "").strip().lower()
+    if quality not in {"", "suspicious", "decrease"}:
+        quality = ""
+
+    projects = _accessible_projects()
+    accessible_ids = {p.id for p in projects}
+    if project_id and project_id not in accessible_ids:
+        abort(403)
+
+    query = db.session.query(DailyReportProgress).join(DailyReport, DailyReportProgress.report_id == DailyReport.id).join(Project, DailyReportProgress.project_id == Project.id)
+    if not current_user.is_owner:
+        cid = _company_id()
+        if not cid:
+            query = query.filter(db.text("1=0"))
+        else:
+            query = query.filter(DailyReportProgress.company_id == cid)
+    if accessible_ids:
+        query = query.filter(DailyReportProgress.project_id.in_(accessible_ids))
+    else:
+        query = query.filter(db.text("1=0"))
+    if project_id:
+        query = query.filter(DailyReportProgress.project_id == project_id)
+    if item_id:
+        query = query.filter(DailyReportProgress.contract_item_id == item_id)
+    if location:
+        query = query.filter(DailyReportProgress.location.ilike("%" + location + "%"))
+    if structure_tag:
+        query = query.filter(DailyReportProgress.structure_tag.ilike("%" + structure_tag + "%"))
+
+    try:
+        if date_from_raw:
+            query = query.filter(DailyReport.report_date >= date.fromisoformat(date_from_raw))
+        if date_to_raw:
+            query = query.filter(DailyReport.report_date <= date.fromisoformat(date_to_raw))
+    except ValueError:
+        flash("بازه تاریخ نامعتبر است.", "warning")
+
+    query = query.order_by(DailyReport.report_date.desc(), DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+
+    # Quality filters require the previous record, so resolve them from the
+    # complete filtered history before pagination. Cap this safety scan to
+    # the same 5000-row ceiling used by Excel export.
+    if quality:
+        quality_candidates = query.limit(5000).all()
+        matching_ids = []
+        for candidate in quality_candidates:
+            previous = (
+                DailyReportProgress.query
+                .filter(
+                    DailyReportProgress.project_id == candidate.project_id,
+                    DailyReportProgress.contract_item_id == candidate.contract_item_id,
+                    DailyReportProgress.location == candidate.location,
+                    DailyReportProgress.structure_tag == candidate.structure_tag,
+                    DailyReportProgress.created_at < candidate.created_at,
+                )
+                .order_by(DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+                .first()
+            )
+            current = float(candidate.progress_percent) if candidate.progress_percent is not None else None
+            old_value = float(previous.progress_percent) if previous and previous.progress_percent is not None else None
+            delta = None if current is None or old_value is None else round(current - old_value, 2)
+            suspicious = (
+                current is None
+                or (delta is not None and (delta < 0 or delta > 25))
+                or (candidate.quantity_done is not None and float(candidate.quantity_done) < 0)
+            )
+            if (quality == "suspicious" and suspicious) or (quality == "decrease" and delta is not None and delta < 0):
+                matching_ids.append(candidate.id)
+        query = query.filter(DailyReportProgress.id.in_(matching_ids)) if matching_ids else query.filter(db.text("1=0"))
+
+    # KPI summary uses the exact same access-control and filters as the table.
+    summary_row = query.with_entities(
+        func.count(DailyReportProgress.id),
+        func.count(func.distinct(DailyReportProgress.contract_item_id)),
+        func.count(func.distinct(DailyReportProgress.structure_tag)),
+        func.max(DailyReport.report_date),
+        func.max(DailyReportProgress.progress_percent),
+        func.sum(DailyReportProgress.quantity_done),
+    ).first()
+    traceability_summary = {
+        "records": int(summary_row[0] or 0),
+        "items": int(summary_row[1] or 0),
+        "tags": int(summary_row[2] or 0),
+        "latest_date": summary_row[3],
+        "max_progress": summary_row[4],
+        "total_quantity": summary_row[5],
+    }
+    location_summary = (
+        query.with_entities(DailyReportProgress.location, func.count(DailyReportProgress.id).label("records"))
+        .filter(DailyReportProgress.location.isnot(None), DailyReportProgress.location != "")
+        .group_by(DailyReportProgress.location)
+        .order_by(func.count(DailyReportProgress.id).desc(), DailyReportProgress.location.asc())
+        .limit(8).all()
+    )
+    tag_summary = (
+        query.with_entities(DailyReportProgress.structure_tag, func.count(DailyReportProgress.id).label("records"))
+        .filter(DailyReportProgress.structure_tag.isnot(None), DailyReportProgress.structure_tag != "")
+        .group_by(DailyReportProgress.structure_tag)
+        .order_by(func.count(DailyReportProgress.id).desc(), DailyReportProgress.structure_tag.asc())
+        .limit(8).all()
+    )
+
+    page = request.args.get("page", 1, type=int)
+    per_page = current_app.config.get("PER_PAGE", 20)
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    trace_rows = []
+    quality_counts = {"increase": 0, "unchanged": 0, "decrease": 0, "suspicious": 0, "baseline": 0}
+    for row in pagination.items:
+        previous = (
+            DailyReportProgress.query
+            .filter(
+                DailyReportProgress.project_id == row.project_id,
+                DailyReportProgress.contract_item_id == row.contract_item_id,
+                DailyReportProgress.location == row.location,
+                DailyReportProgress.structure_tag == row.structure_tag,
+                DailyReportProgress.created_at < row.created_at,
+            )
+            .order_by(DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+            .first()
+        )
+        current = float(row.progress_percent) if row.progress_percent is not None else None
+        old_value = float(previous.progress_percent) if previous and previous.progress_percent is not None else None
+        if current is None or old_value is None:
+            change, delta = "baseline", None
+        else:
+            delta = round(current - old_value, 2)
+            change = "increase" if delta > 0 else ("decrease" if delta < 0 else "unchanged")
+        suspicious = (
+            current is None
+            or (delta is not None and (delta < 0 or delta > 25))
+            or (row.quantity_done is not None and float(row.quantity_done) < 0)
+        )
+        quality_counts[change] += 1
+        if suspicious:
+            quality_counts["suspicious"] += 1
+        trace_rows.append({
+            "row": row, "previous_progress": old_value,
+            "delta": delta, "change": change, "suspicious": suspicious,
+        })
+
+    quality_summary = {
+        "increase": quality_counts["increase"],
+        "unchanged": quality_counts["unchanged"],
+        "decrease": quality_counts["decrease"],
+        "baseline": quality_counts["baseline"],
+        "suspicious": quality_counts["suspicious"],
+    }
+
+    item_ids = {r.contract_item_id for r in pagination.items}
+    items = {item.id: item for item in ContractItem.query.filter(ContractItem.id.in_(item_ids)).all()} if item_ids else {}
+    return render_template(
+        "daily_reports/progress_traceability.html",
+        rows=trace_rows, pagination=pagination, projects=projects,
+        project_id=project_id, item_id=item_id, location=location,
+        structure_tag=structure_tag, date_from=date_from_raw, date_to=date_to_raw, quality=quality,
+        items=items, traceability_summary=traceability_summary,
+        location_summary=location_summary, tag_summary=tag_summary, quality_summary=quality_summary,
+    )
+
 @bp.route("/project/<int:project_id>")
 def project_list(project_id: int):
     project = get_project_or_403(project_id)
@@ -445,16 +693,20 @@ def detail(report_id: int):
         or current_user.is_owner
         or current_user.is_company_admin
     )
-    can_approve = report.is_pending_approval and can_manage_project_reports(report.project)
+    can_manage = can_manage_project_reports(report.project)
+    can_approve = report.is_pending_approval and can_manage
     history = report.history.order_by(DailyReportHistory.created_at.asc()).all()
     review_form = ReviewForm() if can_approve else None
+    apply_progress_form = ApplyProgressForm() if can_manage and report.progress_application_status == "approved_not_applied" else None
     return render_template(
         "daily_reports/detail.html",
         report=report,
         history=history,
         can_edit=can_edit,
         can_approve=can_approve,
+        can_manage=can_manage,
         review_form=review_form,
+        apply_progress_form=apply_progress_form,
         status_labels=DailyReport.STATUS_LABELS,
     )
 
@@ -563,6 +815,40 @@ def review(report_id: int):
     return redirect(url_for("daily_reports.detail", report_id=report_id))
 
 
+@bp.route("/<int:report_id>/apply-progress", methods=["POST"])
+def apply_progress(report_id: int):
+    report = get_report_or_403(report_id)
+    if not can_manage_project_reports(report.project):
+        flash("شما مجوز اعمال پیشرفت این پروژه را ندارید.", "danger")
+        return redirect(url_for("daily_reports.detail", report_id=report_id))
+    form = ApplyProgressForm()
+    if not form.validate_on_submit():
+        flash("درخواست اعمال پیشرفت نامعتبر است.", "danger")
+        return redirect(url_for("daily_reports.detail", report_id=report_id))
+    try:
+        # PostgreSQL row-level lock makes the idempotency check safe against
+        # concurrent apply-progress requests. SQLite ignores FOR UPDATE.
+        locked_report = (
+            DailyReport.query.filter(DailyReport.id == report_id)
+            .with_for_update()
+            .first()
+        )
+        if locked_report is None:
+            abort(404)
+        if not can_manage_project_reports(locked_report.project):
+            abort(403)
+        locked_report.apply_approved_progress()
+        db.session.commit()
+        flash("پیشرفت گزارش با موفقیت روی آیتم‌ها اعمال شد.", "success")
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), "warning")
+    except SQLAlchemyError:
+        db.session.rollback()
+        flash("خطای پایگاه داده هنگام اعمال پیشرفت.", "danger")
+    return redirect(url_for("daily_reports.detail", report_id=report_id))
+
+
 @bp.route("/<int:report_id>/submit", methods=["POST"])
 def submit(report_id: int):
     report = get_report_or_403(report_id)
@@ -618,6 +904,121 @@ def _all_contract_items(project: Project) -> List[ContractItem]:
         except Exception:
             items.extend(list(rel)[:500])
     return items
+
+
+@bp.route("/progress-traceability/export.xlsx")
+def progress_traceability_export():
+    """Export the same tenant-scoped Progress Traceability view to Excel."""
+    project_id = request.args.get("project_id", type=int)
+    item_id = request.args.get("item_id", type=int)
+    location = request.args.get("location", "").strip()
+    structure_tag = request.args.get("structure_tag", "").strip()
+    date_from_raw = request.args.get("date_from", "").strip()
+    date_to_raw = request.args.get("date_to", "").strip()
+    quality = request.args.get("quality", "").strip().lower()
+    if quality not in {"", "suspicious", "decrease"}:
+        quality = ""
+
+    projects = _accessible_projects()
+    accessible_ids = {p.id for p in projects}
+    if project_id and project_id not in accessible_ids:
+        abort(403)
+
+    query = (
+        db.session.query(DailyReportProgress)
+        .join(DailyReport, DailyReportProgress.report_id == DailyReport.id)
+        .join(Project, DailyReportProgress.project_id == Project.id)
+    )
+    if not current_user.is_owner:
+        cid = _company_id()
+        query = query.filter(
+            DailyReportProgress.company_id == cid if cid else db.text("1=0")
+        )
+    query = query.filter(
+        DailyReportProgress.project_id.in_(accessible_ids)
+        if accessible_ids else db.text("1=0")
+    )
+    if project_id:
+        query = query.filter(DailyReportProgress.project_id == project_id)
+    if item_id:
+        query = query.filter(DailyReportProgress.contract_item_id == item_id)
+    if location:
+        query = query.filter(DailyReportProgress.location.ilike("%" + location + "%"))
+    if structure_tag:
+        query = query.filter(DailyReportProgress.structure_tag.ilike("%" + structure_tag + "%"))
+    try:
+        if date_from_raw:
+            query = query.filter(DailyReport.report_date >= date.fromisoformat(date_from_raw))
+        if date_to_raw:
+            query = query.filter(DailyReport.report_date <= date.fromisoformat(date_to_raw))
+    except ValueError:
+        abort(400, description="بازه تاریخ نامعتبر است.")
+
+    if quality:
+        candidates = query.order_by(
+            DailyReport.report_date.desc(),
+            DailyReportProgress.created_at.desc(),
+            DailyReportProgress.id.desc(),
+        ).limit(5000).all()
+        matching_ids = []
+        for candidate in candidates:
+            previous = (
+                DailyReportProgress.query
+                .filter(
+                    DailyReportProgress.project_id == candidate.project_id,
+                    DailyReportProgress.contract_item_id == candidate.contract_item_id,
+                    DailyReportProgress.location == candidate.location,
+                    DailyReportProgress.structure_tag == candidate.structure_tag,
+                    DailyReportProgress.created_at < candidate.created_at,
+                )
+                .order_by(DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+                .first()
+            )
+            current = float(candidate.progress_percent) if candidate.progress_percent is not None else None
+            old_value = float(previous.progress_percent) if previous and previous.progress_percent is not None else None
+            delta = None if current is None or old_value is None else round(current - old_value, 2)
+            suspicious = (
+                current is None
+                or (delta is not None and (delta < 0 or delta > 25))
+                or (candidate.quantity_done is not None and float(candidate.quantity_done) < 0)
+            )
+            if (quality == "suspicious" and suspicious) or (quality == "decrease" and delta is not None and delta < 0):
+                matching_ids.append(candidate.id)
+        query = query.filter(DailyReportProgress.id.in_(matching_ids)) if matching_ids else query.filter(db.text("1=0"))
+
+    rows = query.order_by(
+        DailyReport.report_date.desc(),
+        DailyReportProgress.created_at.desc(),
+        DailyReportProgress.id.desc(),
+    ).limit(5000).all()
+
+    # Keep the export filter intact, but resolve the previous record from
+    # the complete tenant/project history so date/tag filters cannot create
+    # a false "first record".
+    for row in rows:
+        previous = (
+            DailyReportProgress.query
+            .filter(
+                DailyReportProgress.project_id == row.project_id,
+                DailyReportProgress.contract_item_id == row.contract_item_id,
+                DailyReportProgress.location == row.location,
+                DailyReportProgress.structure_tag == row.structure_tag,
+                DailyReportProgress.created_at < row.created_at,
+            )
+            .order_by(DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+            .first()
+        )
+        row._previous_progress = (
+            float(previous.progress_percent)
+            if previous and previous.progress_percent is not None
+            else None
+        )
+
+    try:
+        wb = export_progress_traceability_workbook(rows)
+    except RuntimeError as exc:
+        abort(503, description=str(exc))
+    return xlsx_response(workbook_to_bytes(wb), "progress_traceability.xlsx")
 
 
 @bp.route("/project/<int:project_id>/template.xlsx")

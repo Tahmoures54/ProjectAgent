@@ -17,6 +17,7 @@
     </div>
     <div class="flex flex-wrap gap-2">
       <a href="{{ url_for('projects.epc_controls', project_id=project.id) }}" class="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 text-sm font-bold">کنترل EPC</a>
+      <a href="{{ url_for('daily_reports.progress_traceability', project_id=project.id) }}" class="px-4 py-2.5 rounded-2xl border border-brand-200 text-brand-700 text-sm font-bold"><i class="fas fa-route ml-1"></i> ردیابی Progress</a>
       <a href="{{ url_for('daily_reports.export_xlsx', project_id=project.id) }}" class="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 text-sm font-bold"><i class="fas fa-file-export text-brand-600 ml-1"></i> خروجی اکسل</a>
       {% if can_submit %}
       <a href="{{ url_for('daily_reports.template_xlsx', project_id=project.id) }}" class="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 text-sm font-bold"><i class="fas fa-download text-emerald-600 ml-1"></i> قالب</a>

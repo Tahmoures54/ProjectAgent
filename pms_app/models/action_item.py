@@ -128,10 +128,81 @@ class ActionItem(db.Model):
     def is_done(self) -> bool:
         return self.status == "done"
 
-    def mark_done(self) -> None:
+    history = db.relationship(
+        "ActionItemHistory",
+        back_populates="action",
+        cascade="all, delete-orphan",
+        order_by="ActionItemHistory.created_at.asc()",
+        lazy="dynamic",
+    )
+
+    def add_history(
+        self,
+        *,
+        user_id: Optional[int],
+        action: str,
+        from_status: Optional[str] = None,
+        to_status: Optional[str] = None,
+        note: Optional[str] = None,
+    ) -> "ActionItemHistory":
+        entry = ActionItemHistory(
+            action_item=self,
+            user_id=user_id,
+            action=action,
+            from_status=from_status,
+            to_status=to_status or self.status,
+            note=note,
+        )
+        db.session.add(entry)
+        return entry
+
+    def mark_done(self, user_id: Optional[int] = None, note: Optional[str] = None) -> None:
+        old = self.status
         self.status = "done"
         self.progress_percent = 100
         self.completed_at = utcnow()
+        self.add_history(
+            user_id=user_id,
+            action="status_change",
+            from_status=old,
+            to_status="done",
+            note=note,
+        )
 
     def __repr__(self) -> str:
         return f"<ActionItem id={self.id} project_id={self.project_id} title={self.title!r} status={self.status}>"
+
+
+class ActionItemHistory(db.Model):
+    """Immutable status/action trail for an ActionItem."""
+    __tablename__ = "action_item_history"
+
+    id = db.Column(db.Integer, primary_key=True)
+    action_item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("action_items.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    action = db.Column(db.String(50), nullable=False)
+    from_status = db.Column(db.String(30), nullable=True)
+    to_status = db.Column(db.String(30), nullable=True)
+    note = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
+
+    action_item = db.relationship("ActionItem", back_populates="history")
+    user = db.relationship("User", lazy="joined")
+
+    __table_args__ = (
+        db.Index("ix_action_item_history_action_created", "action", "created_at"),
+        db.Index("ix_action_item_history_item_created", "action_item_id", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ActionItemHistory id={self.id} action_item_id={self.action_item_id} action={self.action!r}>"

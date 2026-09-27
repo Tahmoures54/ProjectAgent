@@ -229,8 +229,9 @@ def project_evm(project, as_of: Optional[date] = None) -> EVMResult:
 @dataclass
 class SCurveData:
     labels: List[str] = field(default_factory=list)
-    pv: List[float] = field(default_factory=list)
+    pv: List[Optional[float]] = field(default_factory=list)
     ev: List[float] = field(default_factory=list)
+    baseline_valid: bool = False
     ac: List[float] = field(default_factory=list)
     dates: List[str] = field(default_factory=list)
 
@@ -239,6 +240,7 @@ class SCurveData:
             "labels": self.labels,
             "pv": self.pv,
             "ev": self.ev,
+            "baseline_valid": self.baseline_valid,
             "ac": self.ac,
             "dates": self.dates,
         }
@@ -298,6 +300,9 @@ def generate_s_curve(
     for contract in getattr(project, "contracts", []):
         items.extend(list(getattr(contract, "items", [])))
 
+    project_baseline_start = getattr(project, "baseline_start_date", None)
+    project_baseline_finish = getattr(project, "baseline_finish_date", None)
+
     starts = []
     ends = []
     if project.start_date:
@@ -339,6 +344,7 @@ def generate_s_curve(
         points = [as_of]
 
     item_data = []
+    baseline_valid = bool(project_baseline_start and project_baseline_end and project_baseline_end > project_baseline_start)
     for it in items:
         bac_val = getattr(it, "bac", None)
         bac = _d(bac_val if bac_val is not None else (
@@ -348,9 +354,13 @@ def generate_s_curve(
         ac = _d(it.actual_cost)
         ev_final = _q(bac * progress / Decimal("100"))
 
-        b_start = it.baseline_start_date or project.start_date or start_date
-        b_end = it.baseline_end_date or project.finish_date or end_date
-        a_start = it.actual_start_date or b_start
+        # Planned-value curves must come from an approved baseline, never from
+        # current/forecast project dates. An item may inherit the project baseline.
+        b_start = it.baseline_start_date or project_baseline_start
+        b_end = it.baseline_end_date or project_baseline_finish
+        item_baseline_valid = bool(b_start and b_end and b_end > b_start)
+        baseline_valid = baseline_valid and item_baseline_valid
+        a_start = it.actual_start_date or b_start or start_date
 
         item_data.append({
             "bac": bac,
@@ -362,7 +372,7 @@ def generate_s_curve(
         })
 
     labels = []
-    pv_series = []
+    pv_series: List[Optional[float]] = []
     ev_series = []
     ac_series = []
     date_strs = []
@@ -380,7 +390,7 @@ def generate_s_curve(
 
         labels.append(_jalali_label(pt) if jalali_labels else pt.strftime("%Y-%m"))
         date_strs.append(pt.isoformat())
-        pv_series.append(float(_q(cum_pv)))
+        pv_series.append(float(_q(cum_pv)) if baseline_valid else None)
         ev_series.append(float(_q(cum_ev)))
         ac_series.append(float(_q(cum_ac)))
 
@@ -390,6 +400,7 @@ def generate_s_curve(
         ev=ev_series,
         ac=ac_series,
         dates=date_strs,
+        baseline_valid=baseline_valid,
     )
 
 

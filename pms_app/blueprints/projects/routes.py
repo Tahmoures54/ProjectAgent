@@ -513,8 +513,16 @@ def action_new(project_id: int):
             action.contract_item_id = None
         _sanitize_action_links(action, project)
         if action.status == "done":
-            action.mark_done()
+            action.mark_done(current_user.id, "ایجاد اقدام در وضعیت انجام‌شده")
         db.session.add(action)
+        db.session.flush()
+        action.add_history(
+            user_id=current_user.id,
+            action="created",
+            from_status=None,
+            to_status=action.status,
+            note="اقدام ایجاد شد",
+        )
         try:
             db.session.commit()
             flash("اقدام با موفقیت ثبت شد.", "success")
@@ -536,6 +544,9 @@ def action_edit(project_id: int, action_id: int):
     form.assignee_id.choices = _project_members_choices(project)
     form.contract_item_id.choices = _project_items_choices(project)
     if form.validate_on_submit():
+        old_status = action.status
+        old_assignee = action.assignee_id
+        old_priority = action.priority
         action.title = form.title.data.strip()
         action.description = form.description.data or None
         action.status = form.status.data
@@ -553,6 +564,21 @@ def action_edit(project_id: int, action_id: int):
             action.mark_done()
         elif action.status != "done":
             action.completed_at = None
+        if old_status != action.status:
+            action.add_history(
+                user_id=current_user.id, action="status_change",
+                from_status=old_status, to_status=action.status,
+            )
+        if old_assignee != action.assignee_id:
+            action.add_history(
+                user_id=current_user.id, action="assignee_change",
+                note=f"مسئول جدید: {action.assignee_id or 'بدون مسئول'}",
+            )
+        if old_priority != action.priority:
+            action.add_history(
+                user_id=current_user.id, action="priority_change",
+                note=f"اولویت جدید: {action.priority}",
+            )
         try:
             db.session.commit()
             flash("اقدام بروزرسانی شد.", "success")
@@ -572,7 +598,12 @@ def action_done(project_id: int, action_id: int):
     action = ActionItem.query.get_or_404(action_id)
     if action.project_id != project.id:
         abort(404)
-    action.mark_done()
+    old_status = action.status
+    action.mark_done(current_user.id, "علامت‌گذاری دستی به‌عنوان انجام‌شده")
+    if old_status == "done":
+        db.session.rollback()
+        flash("این اقدام قبلاً انجام‌شده است.", "info")
+        return redirect(url_for("projects.action_plan", project_id=project.id))
     try:
         db.session.commit()
         flash("اقدام به‌عنوان انجام‌شده علامت خورد.", "success")

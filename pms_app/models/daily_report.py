@@ -85,7 +85,7 @@ class DailyReport(db.Model):
     work_performed = db.Column(db.Text, nullable=True)
 
     # به‌روزرسانی پیشرفت آیتم‌ها (قبل از تأیید فقط پیشنهادی است)
-    # [{contract_item_id, progress_percent, quantity_done, notes}, ...]
+    # [{contract_item_id, progress_percent, quantity_done, location, structure_tag, notes}, ...]
     progress_updates = db.Column(db.JSON, nullable=True)
 
     # مشکلات، تأخیرات، موانع
@@ -128,6 +128,11 @@ class DailyReport(db.Model):
     )
     submitted_by = db.relationship("User", foreign_keys=[submitted_by_id], lazy="joined")
     reviewed_by = db.relationship("User", foreign_keys=[reviewed_by_id], lazy="joined")
+
+    progress_history = db.relationship(
+        "DailyReportProgress", back_populates="report", cascade="all, delete-orphan",
+        order_by="DailyReportProgress.created_at.asc()", lazy="dynamic",
+    )
 
     history = db.relationship(
         "DailyReportHistory",
@@ -226,6 +231,17 @@ class DailyReport(db.Model):
     @property
     def is_pending_approval(self) -> bool:
         return self.status in ("submitted", "under_review")
+
+    @property
+    def progress_application_status(self) -> str:
+        """وضعیت مستقل اعمال پیشرفت برای جلوگیری از ابهام در EVM."""
+        if not self.progress_updates:
+            return "not_required"
+        if self.progress_applied:
+            return "applied"
+        if self.status == "approved":
+            return "approved_not_applied"
+        return "pending"
 
     @property
     def is_final(self) -> bool:
@@ -336,35 +352,113 @@ class DailyReport(db.Model):
             comment=comment,
         )
 
+    def apply_approved_progress(self) -> None:
+        """اعمال Progress یک گزارش تأییدشده که قبلاً عمداً اعمال نشده است."""
+        if self.status != "approved":
+            raise ValueError("فقط گزارش تأییدشده می‌تواند پیشرفت را اعمال کند.")
+        if self.progress_applied:
+            raise ValueError("پیشرفت این گزارش قبلاً اعمال شده است.")
+        if not self.progress_updates:
+            self.progress_applied = True
+            return
+        self._apply_progress_updates()
+
     def _apply_progress_updates(self) -> None:
-        """اعمال درصد پیشرفت روی ContractItemها پس از تأیید نهایی."""
+        """اعمال اتمیک Progress روی ContractItemهای همان پروژه پس از تأیید."""
         if not self.progress_updates or self.progress_applied:
             return
+
         from pms_app.models.item import ContractItem
 
+        if not isinstance(self.progress_updates, list):
+            raise ValueError("ساختار Progress گزارش نامعتبر است.")
+
+        prepared = []
+        seen_item_ids = set()
+
+        # First validate the complete batch. Nothing is mutated until every
+        # update is known to be valid and belongs to this tenant/project.
         for upd in self.progress_updates:
-            item_id = upd.get("contract_item_id")
-            if not item_id:
-                continue
-            item = db.session.get(ContractItem, int(item_id))
+            if not isinstance(upd, dict):
+                raise ValueError("یکی از رکوردهای Progress نامعتبر است.")
+
+            raw_item_id = upd.get("contract_item_id")
+            if raw_item_id is None or str(raw_item_id).strip() == "":
+                raise ValueError("شناسه آیتم قراردادی برای Progress الزامی است.")
+
+            try:
+                item_id = int(raw_item_id)
+            except (TypeError, ValueError):
+                raise ValueError("شناسه آیتم قراردادی نامعتبر است.")
+
+            if item_id <= 0:
+                raise ValueError("شناسه آیتم قراردادی نامعتبر است.")
+            if item_id in seen_item_ids:
+                raise ValueError(f"آیتم قراردادی #{item_id} بیش از یک‌بار در Progress ثبت شده است.")
+            seen_item_ids.add(item_id)
+
+            location = str(upd.get("location") or "").strip()
+            structure_tag = str(upd.get("structure_tag") or "").strip()
+            if not location and not structure_tag:
+                raise ValueError(
+                    f"برای آیتم قراردادی #{item_id} باید حداقل یکی از «لوکیشن» یا «تگ سازه» ثبت شود."
+                )
+            if len(location) > 160:
+                raise ValueError(f"لوکیشن آیتم #{item_id} بیش از حد طولانی است.")
+            if len(structure_tag) > 120:
+                raise ValueError(f"تگ سازه آیتم #{item_id} بیش از حد طولانی است.")
+
+            item = db.session.get(ContractItem, item_id)
             if not item:
-                continue
+                raise ValueError(f"آیتم قراردادی #{item_id} پیدا نشد.")
             if int(item.company_id or 0) != int(self.company_id or 0):
-                continue
+                raise ValueError(f"آیتم قراردادی #{item_id} متعلق به شرکت گزارش نیست.")
             if not item.contract or item.contract.project_id != self.project_id:
-                continue
+                raise ValueError(f"آیتم قراردادی #{item_id} متعلق به پروژه گزارش نیست.")
+
+            pct_value = None
             pct = upd.get("progress_percent")
             if pct is not None:
                 try:
-                    item.actual_progress_percentage = Decimal(str(pct))
+                    pct_value = Decimal(str(pct))
                 except Exception:
-                    pass
+                    raise ValueError(f"درصد Progress آیتم #{item_id} نامعتبر است.")
+                if not pct_value.is_finite():
+                    raise ValueError(f"درصد Progress آیتم #{item_id} نامعتبر است.")
+                pct_value = max(Decimal("0"), min(Decimal("100"), pct_value))
+
+            qty_value = None
             qty = upd.get("quantity_done")
             if qty is not None and hasattr(item, "actual_quantity"):
                 try:
-                    item.actual_quantity = Decimal(str(qty))
+                    qty_value = Decimal(str(qty))
                 except Exception:
-                    pass
+                    raise ValueError(f"مقدار واقعی آیتم #{item_id} نامعتبر است.")
+                if not qty_value.is_finite():
+                    raise ValueError(f"مقدار واقعی آیتم #{item_id} نامعتبر است.")
+                if qty_value < 0:
+                    raise ValueError(f"مقدار واقعی آیتم #{item_id} نمی‌تواند منفی باشد.")
+
+            prepared.append((item, pct_value, qty_value, location, structure_tag, str(upd.get("notes") or "").strip()[:2000] or None))
+
+        # Apply only after the entire batch passes validation.
+        for item, incoming_pct, qty_value, location, structure_tag, notes in prepared:
+            if incoming_pct is not None:
+                # Physical progress is monotonic: a stale report must never
+                # overwrite a higher progress already recorded.
+                current_pct = Decimal(str(item.actual_progress_percentage or 0))
+                item.actual_progress_percentage = max(current_pct, incoming_pct)
+            if qty_value is not None:
+                item.actual_quantity = qty_value
+            db.session.add(DailyReportProgress(
+                report=self, contract_item_id=item.id, company_id=self.company_id,
+                project_id=self.project_id, location=location or None,
+                structure_tag=structure_tag or None, progress_percent=incoming_pct,
+                quantity_done=qty_value,
+                notes=notes,
+                applied_by_id=self.reviewed_by_id,
+            ))
+
         self.progress_applied = True
 
     def to_summary_dict(self) -> Dict[str, Any]:
@@ -377,6 +471,7 @@ class DailyReport(db.Model):
             "manpower_total": self.manpower_total,
             "submitted_by": self.submitted_by.full_name or self.submitted_by.email if self.submitted_by else None,
             "submitted_at": self.submitted_at.isoformat() if self.submitted_at else None,
+            "progress_application_status": self.progress_application_status,
         }
 
     def __repr__(self) -> str:
@@ -385,6 +480,37 @@ class DailyReport(db.Model):
             f"date={self.report_date} status={self.status}>"
         )
 
+
+
+class DailyReportProgress(db.Model):
+    """سابقه اعمال Progress با مرجع مکانی/سازه‌ای."""
+    __tablename__ = "daily_report_progress"
+
+    id = db.Column(db.Integer, primary_key=True)
+    report_id = db.Column(db.Integer, db.ForeignKey("daily_reports.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_item_id = db.Column(db.Integer, db.ForeignKey("contract_items.id", ondelete="CASCADE"), nullable=False, index=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    location = db.Column(db.String(160), nullable=True)
+    structure_tag = db.Column(db.String(120), nullable=True, index=True)
+    progress_percent = db.Column(db.Numeric(5, 2), nullable=True)
+    quantity_done = db.Column(db.Numeric(18, 4), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    applied_by_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
+
+    report = db.relationship("DailyReport", back_populates="progress_history")
+    contract_item = db.relationship("ContractItem", lazy="joined")
+    applied_by = db.relationship("User", foreign_keys=[applied_by_id], lazy="joined")
+
+    __table_args__ = (
+        db.Index("ix_daily_report_progress_project_item", "project_id", "contract_item_id"),
+        db.Index("ix_daily_report_progress_project_location", "project_id", "location"),
+        db.Index("ix_daily_report_progress_project_tag", "project_id", "structure_tag"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DailyReportProgress id={self.id} report_id={self.report_id} item_id={self.contract_item_id}>"
 
 class DailyReportHistory(db.Model):
     """تاریخچه تغییرات وضعیت گزارش روزانه (audit trail)."""

@@ -150,11 +150,11 @@
           <h3 class="pa-section-title mb-0"><i class="fas fa-chart-line text-indigo-500"></i> پیشرفت آیتم‌ها</h3>
           <p class="text-xs text-slate-400 mt-1">فقط پس از تأیید مدیر روی WBS اعمال می‌شود.</p>
         </div>
-        <button type="button" class="pa-chip-btn" @click="progress.push({contract_item_id:'', progress_percent:'', quantity_done:'', notes:''})"><i class="fas fa-plus"></i> ردیف</button>
+        <button type="button" class="pa-chip-btn" @click="progress.push({contract_item_id:'', progress_percent:'', quantity_done:'', location:'', structure_tag:'', notes:''})"><i class="fas fa-plus"></i> ردیف</button>
       </div>
       <div class="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-700">
         <table class="pa-grid">
-          <thead><tr><th>آیتم / WBS</th><th class="w-28">درصد</th><th class="w-28">مقدار</th><th>یادداشت</th><th class="w-12"></th></tr></thead>
+          <thead><tr><th>آیتم / WBS</th><th class="w-24">درصد</th><th class="w-24">مقدار</th><th>لوکیشن</th><th>تگ سازه</th><th>یادداشت</th><th class="w-12"></th></tr></thead>
           <tbody>
             <template x-for="(row, i) in progress" :key="i">
               <tr>
@@ -168,6 +168,8 @@
                 </td>
                 <td><input class="pa-input" type="number" min="0" max="100" step="0.1" x-model="row.progress_percent"></td>
                 <td><input class="pa-input" type="number" min="0" step="0.01" x-model="row.quantity_done"></td>
+                <td><input class="pa-input" x-model="row.location" placeholder="ناحیه / Grid / Elevation"></td>
+                <td><input class="pa-input" x-model="row.structure_tag" placeholder="مثلاً ST-03 / TK-101"></td>
                 <td><input class="pa-input" x-model="row.notes" placeholder="شرح کار آیتم"></td>
                 <td><button type="button" class="text-rose-400" @click="progress.splice(i,1)"><i class="fas fa-times"></i></button></td>
               </tr>
@@ -312,7 +314,7 @@ function dailyReportForm() {
     items: boot.items || [],
     manpower: parseRows(boot.manpower, [{role:'', count:0}]),
     equipment: parseRows(boot.equipment, [{name:'', count:1, hours:8}]),
-    progress: parseRows(boot.progress, [{contract_item_id:'', progress_percent:'', quantity_done:'', notes:''}]),
+    progress: parseRows(boot.progress, [{contract_item_id:'', progress_percent:'', quantity_done:'', location:'', structure_tag:'', notes:''}]),
     materials: parseRows(boot.materials, [{name:'', qty:'', unit:'', vendor:''}]),
     engineering: parseRows(boot.engineering, [{doc_no:'', title:'', status:''}]),
     manpowerTotal: boot.manpowerTotal || 0,
