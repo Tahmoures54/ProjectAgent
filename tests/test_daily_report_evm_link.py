@@ -124,3 +124,32 @@ def test_daily_report_cannot_be_approved_twice(db_session):
         raise AssertionError("An approved Daily Report must not be approved twice")
 
     assert float(item.actual_progress_percentage) == 70.0
+
+
+def test_approved_report_without_progress_application_is_explicit(db_session):
+    company = Company(name="EVM Company 6")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(company_id=company.id, project_code="EVM-6", project_name="EVM", status="active")
+    contract = Contract(project_id=project.id, company_id=company.id, contract_number="C6", title="C6")
+    item = ContractItem(contract=contract, company_id=company.id, item_code="I6", description="Work",
+                        original_amount=1000, adjusted_amount=1000, actual_progress_percentage=20,
+                        actual_cost=200)
+    db_session.add_all([project, contract, item])
+    db_session.flush()
+
+    report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
+                         report_date=date.today(), status="submitted",
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 80}])
+    db_session.add(report)
+    db_session.flush()
+
+    assert report.progress_application_status == "pending"
+    report.approve(2, comment="approved for record only", apply_progress=False)
+    db_session.flush()
+
+    assert report.status == "approved"
+    assert report.progress_applied is False
+    assert report.progress_application_status == "approved_not_applied"
+    assert float(item.actual_progress_percentage) == 20.0
+    assert float(project_evm(project).ev) == 200.0
