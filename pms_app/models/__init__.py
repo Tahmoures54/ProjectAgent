@@ -15,7 +15,7 @@ from .item import ContractItem  # noqa: F401
 from .report import Report  # noqa: F401
 from .sms_log import SMSLog  # noqa: F401
 from .subscription import Subscription  # noqa: F401
-from .action_item import ActionItem  # noqa: F401
+from .action_item import ActionItem, ActionItemHistory  # noqa: F401
 from .daily_report import DailyReport, DailyReportHistory, DailyReportProgress  # noqa: F401
 from .concern import Concern, ConcernComment, ConcernHistory  # noqa: F401
 
@@ -33,6 +33,7 @@ __all__ = [
     "SMSLog",
     "Subscription",
     "ActionItem",
+    "ActionItemHistory",
     "DailyReport",
     "DailyReportHistory",
     "DailyReportProgress",
