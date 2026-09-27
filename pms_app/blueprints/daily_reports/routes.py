@@ -15,7 +15,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from pms_app.extensions import db
@@ -405,13 +405,53 @@ def progress_traceability():
         flash("بازه تاریخ نامعتبر است.", "warning")
 
     query = query.order_by(DailyReport.report_date.desc(), DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+
+    # KPI summary uses the exact same access-control and filters as the table.
+    summary_row = query.with_entities(
+        func.count(DailyReportProgress.id),
+        func.count(func.distinct(DailyReportProgress.contract_item_id)),
+        func.count(func.distinct(DailyReportProgress.structure_tag)),
+        func.max(DailyReport.report_date),
+        func.max(DailyReportProgress.progress_percent),
+        func.sum(DailyReportProgress.quantity_done),
+    ).first()
+    traceability_summary = {
+        "records": int(summary_row[0] or 0),
+        "items": int(summary_row[1] or 0),
+        "tags": int(summary_row[2] or 0),
+        "latest_date": summary_row[3],
+        "max_progress": summary_row[4],
+        "total_quantity": summary_row[5],
+    }
+    location_summary = (
+        query.with_entities(DailyReportProgress.location, func.count(DailyReportProgress.id).label("records"))
+        .filter(DailyReportProgress.location.isnot(None), DailyReportProgress.location != "")
+        .group_by(DailyReportProgress.location)
+        .order_by(func.count(DailyReportProgress.id).desc(), DailyReportProgress.location.asc())
+        .limit(8).all()
+    )
+    tag_summary = (
+        query.with_entities(DailyReportProgress.structure_tag, func.count(DailyReportProgress.id).label("records"))
+        .filter(DailyReportProgress.structure_tag.isnot(None), DailyReportProgress.structure_tag != "")
+        .group_by(DailyReportProgress.structure_tag)
+        .order_by(func.count(DailyReportProgress.id).desc(), DailyReportProgress.structure_tag.asc())
+        .limit(8).all()
+    )
+
     page = request.args.get("page", 1, type=int)
     per_page = current_app.config.get("PER_PAGE", 20)
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     item_ids = {r.contract_item_id for r in pagination.items}
     items = {item.id: item for item in ContractItem.query.filter(ContractItem.id.in_(item_ids)).all()} if item_ids else {}
-    return render_template("daily_reports/progress_traceability.html", rows=pagination.items, pagination=pagination, projects=projects, project_id=project_id, item_id=item_id, location=location, structure_tag=structure_tag, date_from=date_from_raw, date_to=date_to_raw, items=items)
+    return render_template(
+        "daily_reports/progress_traceability.html",
+        rows=pagination.items, pagination=pagination, projects=projects,
+        project_id=project_id, item_id=item_id, location=location,
+        structure_tag=structure_tag, date_from=date_from_raw, date_to=date_to_raw,
+        items=items, traceability_summary=traceability_summary,
+        location_summary=location_summary, tag_summary=tag_summary,
+    )
 
 @bp.route("/project/<int:project_id>")
 def project_list(project_id: int):
