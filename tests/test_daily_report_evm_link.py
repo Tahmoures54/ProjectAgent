@@ -153,3 +153,54 @@ def test_approved_report_without_progress_application_is_explicit(db_session):
     assert report.progress_application_status == "approved_not_applied"
     assert float(item.actual_progress_percentage) == 20.0
     assert float(project_evm(project).ev) == 200.0
+
+
+def test_approved_report_progress_can_be_applied_later(db_session):
+    company = Company(name="EVM Company 7")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(company_id=company.id, project_code="EVM-7", project_name="EVM", status="active")
+    contract = Contract(project_id=project.id, company_id=company.id, contract_number="C7", title="C7")
+    item = ContractItem(contract=contract, company_id=company.id, item_code="I7", description="Work",
+                        original_amount=1000, adjusted_amount=1000, actual_progress_percentage=20,
+                        actual_cost=200)
+    db_session.add_all([project, contract, item])
+    db_session.flush()
+
+    report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
+                         report_date=date.today(), status="submitted",
+                         progress_updates=[{"contract_item_id": item.id, "progress_percent": 80}])
+    db_session.add(report)
+    db_session.flush()
+    report.approve(2, comment="record only", apply_progress=False)
+    db_session.flush()
+
+    assert float(item.actual_progress_percentage) == 20.0
+    assert report.progress_application_status == "approved_not_applied"
+
+    report.apply_approved_progress()
+    db_session.flush()
+
+    assert report.progress_applied is True
+    assert report.progress_application_status == "applied"
+    assert float(item.actual_progress_percentage) == 80.0
+    assert float(project_evm(project).ev) == 800.0
+
+
+def test_apply_approved_progress_requires_approved_status(db_session):
+    company = Company(name="EVM Company 8")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(company_id=company.id, project_code="EVM-8", project_name="EVM", status="active")
+    report = DailyReport(company_id=company.id, project_id=project.id, submitted_by_id=1,
+                         report_date=date.today(), status="submitted",
+                         progress_updates=[])
+    db_session.add_all([project, report])
+    db_session.flush()
+
+    try:
+        report.apply_approved_progress()
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Unapproved report must not apply progress")
