@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6 space-y-5">
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+    <div>
+      <div class="text-xs font-bold text-brand-600 mb-1">PROJECT CONTROL</div>
+      <h1 class="text-2xl font-black">مرکز هشدار کنترل پروژه</h1>
+      <p class="text-sm text-slate-500 mt-1">مشکلات قابل اقدام را از روی آخرین Progress هر Location / Structure Tag پیدا می‌کند.</p>
+    </div>
+    <a href="{{ url_for('daily_reports.progress_traceability') }}" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold">مشاهده Traceability</a>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="pa-card p-4"><div class="text-xs text-slate-400">کل هشدارها</div><div class="text-2xl font-black mt-1">{{ summary.total }}</div></div>
+    <div class="pa-card p-4"><div class="text-xs text-red-500">بحرانی</div><div class="text-2xl font-black text-red-600 mt-1">{{ summary.high }}</div></div>
+    <div class="pa-card p-4"><div class="text-xs text-amber-500">نیازمند بررسی</div><div class="text-2xl font-black text-amber-600 mt-1">{{ summary.medium }}</div></div>
+    <div class="pa-card p-4"><div class="text-xs text-slate-400">Low</div><div class="text-2xl font-black mt-1">{{ summary.low }}</div></div>
+  </div>
+
+  <form method="get" class="pa-card p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+    <div>
+      <label class="text-xs font-bold text-slate-400 mb-1 block">پروژه</label>
+      <select name="project_id" class="pa-input">
+        <option value="">همه پروژه‌ها</option>
+        {% for project in projects %}<option value="{{ project.id }}" {% if project_id == project.id %}selected{% endif %}>{{ project.project_name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="text-xs font-bold text-slate-400 mb-1 block">شدت</label>
+      <select name="severity" class="pa-input">
+        <option value="">همه</option><option value="high" {% if severity == 'high' %}selected{% endif %}>بحرانی</option><option value="medium" {% if severity == 'medium' %}selected{% endif %}>نیازمند بررسی</option>
+      </select>
+    </div>
+    <div>
+      <label class="text-xs font-bold text-slate-400 mb-1 block">نوع هشدار</label>
+      <select name="type" class="pa-input">
+        <option value="">همه</option><option value="suspicious">Progress غیرعادی</option><option value="decrease">کاهش Progress</option><option value="stale">Progress قدیمی</option><option value="scope">Scope ناقص</option><option value="quantity">Quantity منفی</option>
+      </select>
+    </div>
+    <div class="flex items-end"><button class="w-full px-4 py-2.5 rounded-xl bg-slate-900 text-white font-bold">اعمال فیلتر</button></div>
+  </form>
+
+  <div class="pa-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b bg-slate-50 dark:bg-slate-900/40"><th class="text-right px-4 py-3">شدت</th><th class="text-right px-4 py-3">هشدار</th><th class="text-right px-4 py-3">Project / WBS</th><th class="text-right px-4 py-3">Location / Structure Tag</th><th class="text-right px-4 py-3">Progress</th><th class="text-right px-4 py-3">تغییر</th><th class="text-right px-4 py-3">اقدام</th></tr></thead>
+        <tbody>
+        {% for alert in alerts %}
+          <tr class="border-b last:border-0 hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+            <td class="px-4 py-3">{% if alert.severity == 'high' %}<span class="px-2 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-black">بحرانی</span>{% else %}<span class="px-2 py-1 rounded-lg bg-amber-100 text-amber-700 text-xs font-black">بررسی</span>{% endif %}</td>
+            <td class="px-4 py-3"><div class="font-black">{{ alert.title }}</div><div class="text-xs text-slate-500 mt-1">{{ alert.reason }}</div></td>
+            <td class="px-4 py-3"><div class="font-bold">{{ alert.project.project_name if alert.project else '—' }}</div><div class="text-xs text-slate-400">{{ alert.item.wbs_code if alert.item else '—' }} · {{ alert.item.title if alert.item else '—' }}</div></td>
+            <td class="px-4 py-3"><div class="font-bold">{{ alert.row.location or 'بدون Location' }}</div><div class="text-xs text-slate-400">{{ alert.row.structure_tag or 'بدون Structure Tag' }}</div></td>
+            <td class="px-4 py-3 font-black">{{ alert.row.progress_percent if alert.row.progress_percent is not none else '—' }}%</td>
+            <td class="px-4 py-3">{% if alert.delta is not none %}{{ '%+g'|format(alert.delta) }}%{% else %}—{% endif %}</td>
+            <td class="px-4 py-3"><a class="text-brand-600 font-bold" href="{{ url_for('daily_reports.progress_traceability', project_id=alert.row.project_id, item_id=alert.row.contract_item_id, location=alert.row.location, structure_tag=alert.row.structure_tag) }}">باز کردن</a></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="px-4 py-12 text-center text-slate-400">هشداری با این فیلتر پیدا نشد.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
