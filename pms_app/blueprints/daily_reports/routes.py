@@ -68,7 +68,9 @@ def _parse_lines_to_list(raw: str, expected_parts: int = 2) -> List[dict]:
                     "contract_item_id": _safe_int(parts[0]),
                     "progress_percent": _safe_float(parts[1] if len(parts) > 1 else None),
                     "quantity_done": _safe_float(parts[2] if len(parts) > 2 else None),
-                    "notes": parts[3] if len(parts) > 3 else "",
+                    "location": parts[3] if len(parts) > 3 else "",
+                    "structure_tag": parts[4] if len(parts) > 4 else "",
+                    "notes": parts[5] if len(parts) > 5 else "",
                 }
             )
     return result
@@ -132,6 +134,8 @@ def _parse_structured(raw: str, kind: str) -> List[dict]:
                             "contract_item_id": _safe_int(it.get("contract_item_id") or it.get("id")),
                             "progress_percent": _safe_float(it.get("progress_percent")),
                             "quantity_done": _safe_float(it.get("quantity_done")),
+                            "location": str(it.get("location") or it.get("work_area") or "").strip(),
+                            "structure_tag": str(it.get("structure_tag") or it.get("tag") or "").strip(),
                             "notes": it.get("notes") or "",
                             "wbs_code": it.get("wbs_code") or "",
                         }
