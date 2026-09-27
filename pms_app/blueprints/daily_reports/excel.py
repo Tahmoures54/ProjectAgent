@@ -750,12 +750,26 @@ def export_progress_traceability_workbook(rows):
         "اعمال‌کننده",
         "زمان ثبت",
         "یادداشت",
+        "تغییر نسبت به ثبت قبل",
+        "وضعیت کنترل کیفیت",
     ])
     style_header_row(ws, fill_hex="0E7F9B")
+    previous_map = {}
+    for row in sorted(rows, key=lambda r: (r.project_id, r.contract_item_id, r.location or "", r.structure_tag or "", r.created_at, r.id)):
+        key = (row.project_id, row.contract_item_id, row.location or "", row.structure_tag or "")
+        previous_map[row.id] = previous_map.get(key)
+        previous_map[key] = row
+
     for row in rows:
         report = row.report
         item = row.contract_item
         applied_by = row.applied_by
+        previous = previous_map.get(row.id)
+        current = float(row.progress_percent) if row.progress_percent is not None else None
+        previous_progress = float(previous.progress_percent) if previous and previous.progress_percent is not None else None
+        delta = round(current - previous_progress, 2) if current is not None and previous_progress is not None else None
+        suspicious = current is None or (delta is not None and (delta < 0 or delta > 25))
+        quality = "مشکوک" if suspicious else ("افزایش" if delta and delta > 0 else ("کاهش" if delta and delta < 0 else ("بدون تغییر" if delta == 0 else "اولین ثبت")))
         ws.append([
             report.report_date.isoformat() if report and report.report_date else "",
             report.project.project_name if report and report.project else "",
@@ -769,6 +783,8 @@ def export_progress_traceability_workbook(rows):
             (applied_by.full_name or applied_by.email) if applied_by else "",
             row.created_at.strftime("%Y-%m-%d %H:%M:%S") if row.created_at else "",
             row.notes or "",
+            delta if delta is not None else "",
+            quality,
         ])
     autosize(ws)
     ws.freeze_panes = "A2"
