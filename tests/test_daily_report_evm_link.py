@@ -303,3 +303,30 @@ def test_daily_report_progress_rejects_invalid_quantity(db_session):
     assert float(item.actual_progress_percentage) == 20.0
     assert float(item.actual_quantity) == 10.0
     assert report.progress_applied is False
+
+
+def test_daily_report_progress_requires_location_or_structure_tag(db_session):
+    company = Company(name="EVM Location Company")
+    db_session.add(company)
+    db_session.flush()
+    project = Project(company_id=company.id, project_code="EVM-LOC", project_name="EVM", status="active")
+    contract = Contract(project_id=project.id, company_id=company.id, contract_number="CL", title="CL")
+    item = ContractItem(contract=contract, company_id=company.id, item_code="IL", description="Tagged Work",
+                        original_amount=1000, adjusted_amount=1000, actual_progress_percentage=10)
+    db_session.add_all([project, contract, item])
+    db_session.flush()
+    report = DailyReport(
+        company_id=company.id, project_id=project.id, submitted_by_id=1,
+        report_date=date.today(), status="submitted",
+        progress_updates=[{"contract_item_id": item.id, "progress_percent": 50}],
+    )
+    db_session.add(report)
+    db_session.flush()
+    try:
+        report.approve(2, comment="missing reference", apply_progress=True)
+    except ValueError as exc:
+        assert "لوکیشن" in str(exc) or "تگ سازه" in str(exc)
+    else:
+        raise AssertionError("Progress must identify a location or structure tag")
+    assert float(item.actual_progress_percentage) == 10.0
+    assert report.progress_applied is False
