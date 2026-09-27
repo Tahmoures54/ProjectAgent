@@ -371,6 +371,9 @@ def progress_traceability():
     structure_tag = request.args.get("structure_tag", "").strip()
     date_from_raw = request.args.get("date_from", "").strip()
     date_to_raw = request.args.get("date_to", "").strip()
+    quality = request.args.get("quality", "").strip().lower()
+    if quality not in {"", "suspicious", "decrease"}:
+        quality = ""
 
     projects = _accessible_projects()
     accessible_ids = {p.id for p in projects}
@@ -406,6 +409,37 @@ def progress_traceability():
         flash("بازه تاریخ نامعتبر است.", "warning")
 
     query = query.order_by(DailyReport.report_date.desc(), DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+
+    # Quality filters require the previous record, so resolve them from the
+    # complete filtered history before pagination. Cap this safety scan to
+    # the same 5000-row ceiling used by Excel export.
+    if quality:
+        quality_candidates = query.limit(5000).all()
+        matching_ids = []
+        for candidate in quality_candidates:
+            previous = (
+                DailyReportProgress.query
+                .filter(
+                    DailyReportProgress.project_id == candidate.project_id,
+                    DailyReportProgress.contract_item_id == candidate.contract_item_id,
+                    DailyReportProgress.location == candidate.location,
+                    DailyReportProgress.structure_tag == candidate.structure_tag,
+                    DailyReportProgress.created_at < candidate.created_at,
+                )
+                .order_by(DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+                .first()
+            )
+            current = float(candidate.progress_percent) if candidate.progress_percent is not None else None
+            old_value = float(previous.progress_percent) if previous and previous.progress_percent is not None else None
+            delta = None if current is None or old_value is None else round(current - old_value, 2)
+            suspicious = (
+                current is None
+                or (delta is not None and (delta < 0 or delta > 25))
+                or (candidate.quantity_done is not None and float(candidate.quantity_done) < 0)
+            )
+            if (quality == "suspicious" and suspicious) or (quality == "decrease" and delta is not None and delta < 0):
+                matching_ids.append(candidate.id)
+        query = query.filter(DailyReportProgress.id.in_(matching_ids)) if matching_ids else query.filter(db.text("1=0"))
 
     # KPI summary uses the exact same access-control and filters as the table.
     summary_row = query.with_entities(
@@ -492,7 +526,7 @@ def progress_traceability():
         "daily_reports/progress_traceability.html",
         rows=trace_rows, pagination=pagination, projects=projects,
         project_id=project_id, item_id=item_id, location=location,
-        structure_tag=structure_tag, date_from=date_from_raw, date_to=date_to_raw,
+        structure_tag=structure_tag, date_from=date_from_raw, date_to=date_to_raw, quality=quality,
         items=items, traceability_summary=traceability_summary,
         location_summary=location_summary, tag_summary=tag_summary, quality_summary=quality_summary,
     )
@@ -808,6 +842,9 @@ def progress_traceability_export():
     structure_tag = request.args.get("structure_tag", "").strip()
     date_from_raw = request.args.get("date_from", "").strip()
     date_to_raw = request.args.get("date_to", "").strip()
+    quality = request.args.get("quality", "").strip().lower()
+    if quality not in {"", "suspicious", "decrease"}:
+        quality = ""
 
     projects = _accessible_projects()
     accessible_ids = {p.id for p in projects}
@@ -843,6 +880,38 @@ def progress_traceability_export():
             query = query.filter(DailyReport.report_date <= date.fromisoformat(date_to_raw))
     except ValueError:
         abort(400, description="بازه تاریخ نامعتبر است.")
+
+    if quality:
+        candidates = query.order_by(
+            DailyReport.report_date.desc(),
+            DailyReportProgress.created_at.desc(),
+            DailyReportProgress.id.desc(),
+        ).limit(5000).all()
+        matching_ids = []
+        for candidate in candidates:
+            previous = (
+                DailyReportProgress.query
+                .filter(
+                    DailyReportProgress.project_id == candidate.project_id,
+                    DailyReportProgress.contract_item_id == candidate.contract_item_id,
+                    DailyReportProgress.location == candidate.location,
+                    DailyReportProgress.structure_tag == candidate.structure_tag,
+                    DailyReportProgress.created_at < candidate.created_at,
+                )
+                .order_by(DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+                .first()
+            )
+            current = float(candidate.progress_percent) if candidate.progress_percent is not None else None
+            old_value = float(previous.progress_percent) if previous and previous.progress_percent is not None else None
+            delta = None if current is None or old_value is None else round(current - old_value, 2)
+            suspicious = (
+                current is None
+                or (delta is not None and (delta < 0 or delta > 25))
+                or (candidate.quantity_done is not None and float(candidate.quantity_done) < 0)
+            )
+            if (quality == "suspicious" and suspicious) or (quality == "decrease" and delta is not None and delta < 0):
+                matching_ids.append(candidate.id)
+        query = query.filter(DailyReportProgress.id.in_(matching_ids)) if matching_ids else query.filter(db.text("1=0"))
 
     rows = query.order_by(
         DailyReport.report_date.desc(),
