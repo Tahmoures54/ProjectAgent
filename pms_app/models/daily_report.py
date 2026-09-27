@@ -129,6 +129,11 @@ class DailyReport(db.Model):
     submitted_by = db.relationship("User", foreign_keys=[submitted_by_id], lazy="joined")
     reviewed_by = db.relationship("User", foreign_keys=[reviewed_by_id], lazy="joined")
 
+    progress_history = db.relationship(
+        "DailyReportProgress", back_populates="report", cascade="all, delete-orphan",
+        order_by="DailyReportProgress.created_at.asc()", lazy="dynamic",
+    )
+
     history = db.relationship(
         "DailyReportHistory",
         back_populates="report",
@@ -445,6 +450,14 @@ class DailyReport(db.Model):
                 item.actual_progress_percentage = max(current_pct, incoming_pct)
             if qty_value is not None:
                 item.actual_quantity = qty_value
+            db.session.add(DailyReportProgress(
+                report=self, contract_item_id=item.id, company_id=self.company_id,
+                project_id=self.project_id, location=location or None,
+                structure_tag=structure_tag or None, progress_percent=incoming_pct,
+                quantity_done=qty_value,
+                notes=str(upd.get("notes") or "").strip()[:2000] or None,
+                applied_by_id=self.reviewed_by_id,
+            ))
 
         self.progress_applied = True
 
@@ -467,6 +480,37 @@ class DailyReport(db.Model):
             f"date={self.report_date} status={self.status}>"
         )
 
+
+
+class DailyReportProgress(db.Model):
+    """سابقه اعمال Progress با مرجع مکانی/سازه‌ای."""
+    __tablename__ = "daily_report_progress"
+
+    id = db.Column(db.Integer, primary_key=True)
+    report_id = db.Column(db.Integer, db.ForeignKey("daily_reports.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_item_id = db.Column(db.Integer, db.ForeignKey("contract_items.id", ondelete="CASCADE"), nullable=False, index=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    location = db.Column(db.String(160), nullable=True)
+    structure_tag = db.Column(db.String(120), nullable=True, index=True)
+    progress_percent = db.Column(db.Numeric(5, 2), nullable=True)
+    quantity_done = db.Column(db.Numeric(18, 4), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    applied_by_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
+
+    report = db.relationship("DailyReport", back_populates="progress_history")
+    contract_item = db.relationship("ContractItem", lazy="joined")
+    applied_by = db.relationship("User", foreign_keys=[applied_by_id], lazy="joined")
+
+    __table_args__ = (
+        db.Index("ix_daily_report_progress_project_item", "project_id", "contract_item_id"),
+        db.Index("ix_daily_report_progress_project_location", "project_id", "location"),
+        db.Index("ix_daily_report_progress_project_tag", "project_id", "structure_tag"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DailyReportProgress id={self.id} report_id={self.report_id} item_id={self.contract_item_id}>"
 
 class DailyReportHistory(db.Model):
     """تاریخچه تغییرات وضعیت گزارش روزانه (audit trail)."""
