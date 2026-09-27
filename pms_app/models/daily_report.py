@@ -347,6 +347,17 @@ class DailyReport(db.Model):
             comment=comment,
         )
 
+    def apply_approved_progress(self) -> None:
+        """اعمال Progress یک گزارش تأییدشده که قبلاً عمداً اعمال نشده است."""
+        if self.status != "approved":
+            raise ValueError("فقط گزارش تأییدشده می‌تواند پیشرفت را اعمال کند.")
+        if self.progress_applied:
+            raise ValueError("پیشرفت این گزارش قبلاً اعمال شده است.")
+        if not self.progress_updates:
+            self.progress_applied = True
+            return
+        self._apply_progress_updates()
+
     def _apply_progress_updates(self) -> None:
         """اعمال درصد پیشرفت روی ContractItemها پس از تأیید نهایی."""
         if not self.progress_updates or self.progress_applied:
