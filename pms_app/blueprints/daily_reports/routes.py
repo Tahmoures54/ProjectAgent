@@ -443,6 +443,7 @@ def progress_traceability():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     trace_rows = []
+    quality_counts = {"increase": 0, "unchanged": 0, "decrease": 0, "suspicious": 0, "baseline": 0}
     for row in pagination.items:
         previous = (
             DailyReportProgress.query
@@ -463,10 +464,26 @@ def progress_traceability():
         else:
             delta = round(current - old_value, 2)
             change = "increase" if delta > 0 else ("decrease" if delta < 0 else "unchanged")
+        suspicious = (
+            current is None
+            or (delta is not None and (delta < 0 or delta > 25))
+            or (row.quantity_done is not None and float(row.quantity_done) < 0)
+        )
+        quality_counts[change] += 1
+        if suspicious:
+            quality_counts["suspicious"] += 1
         trace_rows.append({
             "row": row, "previous_progress": old_value,
-            "delta": delta, "change": change,
+            "delta": delta, "change": change, "suspicious": suspicious,
         })
+
+    quality_summary = {
+        "increase": quality_counts["increase"],
+        "unchanged": quality_counts["unchanged"],
+        "decrease": quality_counts["decrease"],
+        "baseline": quality_counts["baseline"],
+        "suspicious": quality_counts["suspicious"],
+    }
 
     item_ids = {r.contract_item_id for r in pagination.items}
     items = {item.id: item for item in ContractItem.query.filter(ContractItem.id.in_(item_ids)).all()} if item_ids else {}
@@ -476,7 +493,7 @@ def progress_traceability():
         project_id=project_id, item_id=item_id, location=location,
         structure_tag=structure_tag, date_from=date_from_raw, date_to=date_to_raw,
         items=items, traceability_summary=traceability_summary,
-        location_summary=location_summary, tag_summary=tag_summary,
+        location_summary=location_summary, tag_summary=tag_summary, quality_summary=quality_summary,
     )
 
 @bp.route("/project/<int:project_id>")
