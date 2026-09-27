@@ -62,7 +62,7 @@ def _parse_lines_to_list(raw: str, expected_parts: int = 2) -> List[dict]:
                     "hours": _safe_float(parts[2] if len(parts) > 2 else 0),
                 }
             )
-        elif expected_parts == 4:
+        elif expected_parts == 6:
             result.append(
                 {
                     "contract_item_id": _safe_int(parts[0]),
@@ -164,7 +164,7 @@ def _parse_structured(raw: str, kind: str) -> List[dict]:
                         }
                     )
             return rows
-    expected = {"manpower": 2, "equipment": 3, "progress": 4, "materials": 4, "engineering": 3}.get(kind, 2)
+    expected = {"manpower": 2, "equipment": 3, "progress": 6, "materials": 4, "engineering": 3}.get(kind, 2)
     parsed = _parse_lines_to_list(text, expected)
     if kind == "materials":
         out = []
