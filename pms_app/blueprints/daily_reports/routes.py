@@ -850,6 +850,28 @@ def progress_traceability_export():
         DailyReportProgress.id.desc(),
     ).limit(5000).all()
 
+    # Keep the export filter intact, but resolve the previous record from
+    # the complete tenant/project history so date/tag filters cannot create
+    # a false "first record".
+    for row in rows:
+        previous = (
+            DailyReportProgress.query
+            .filter(
+                DailyReportProgress.project_id == row.project_id,
+                DailyReportProgress.contract_item_id == row.contract_item_id,
+                DailyReportProgress.location == row.location,
+                DailyReportProgress.structure_tag == row.structure_tag,
+                DailyReportProgress.created_at < row.created_at,
+            )
+            .order_by(DailyReportProgress.created_at.desc(), DailyReportProgress.id.desc())
+            .first()
+        )
+        row._previous_progress = (
+            float(previous.progress_percent)
+            if previous and previous.progress_percent is not None
+            else None
+        )
+
     try:
         wb = export_progress_traceability_workbook(rows)
     except RuntimeError as exc:
